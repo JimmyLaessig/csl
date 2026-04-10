@@ -1,3 +1,11 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #ifndef CSL_COMPILER_HPP
 #define CSL_COMPILER_HPP
 
@@ -6,8 +14,7 @@
 #include <csl/ShaderGraph.hpp>
 
 #include <expected>
-#include <map>
-#include <string_view>
+#include <string>
 
 namespace csl
 {

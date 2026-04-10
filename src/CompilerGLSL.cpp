@@ -1,3 +1,11 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #include <csl/CompilerGLSL.hpp>
 
 #include <csl/Visitor.hpp>
@@ -6,7 +14,6 @@
 #include <cassert>
 #include <cmath>
 #include <format>
-#include <iostream>
 #include <map>
 #include <ranges>
 #include <set>
@@ -27,15 +34,15 @@ getTypeShortName(ValueType typeId)
 	{
 		case ValueType::BOOL:      return "b";
 		case ValueType::INT:       return "i";
-		case ValueType::INT2:      return "iv";
-		case ValueType::INT3:      return "iv";
-		case ValueType::INT4:      return "iv";
+		case ValueType::VEC2I:      return "iv";
+		case ValueType::VEC3I:      return "iv";
+		case ValueType::VEC4I:      return "iv";
 		case ValueType::FLOAT:     return "f";
-		case ValueType::FLOAT2:    return "v";
-		case ValueType::FLOAT3:    return "v";
-		case ValueType::FLOAT4:    return "v";
-		case ValueType::FLOAT3X3:  return "m";
-		case ValueType::FLOAT4X4:  return "m";
+		case ValueType::VEC2F:    return "v";
+		case ValueType::VEC3F:    return "v";
+		case ValueType::VEC4F:    return "v";
+		case ValueType::MAT33F:  return "m";
+		case ValueType::MAT44F:  return "m";
 		case ValueType::SAMPLER2D: return "s";
 	}
 
@@ -50,15 +57,15 @@ toString(ValueType typeId)
 	{
 		case ValueType::BOOL:      return "bool";
 		case ValueType::INT:       return "int";
-		case ValueType::INT2:      return "ivec2";
-		case ValueType::INT3:      return "ivec3";
-		case ValueType::INT4:      return "ivec5";
+		case ValueType::VEC2I:      return "ivec2";
+		case ValueType::VEC3I:      return "ivec3";
+		case ValueType::VEC4I:      return "ivec5";
 		case ValueType::FLOAT:     return "float";
-		case ValueType::FLOAT2:    return "vec2";
-		case ValueType::FLOAT3:    return "vec3";
-		case ValueType::FLOAT4:    return "vec4";
-		case ValueType::FLOAT3X3:  return "mat3";
-		case ValueType::FLOAT4X4:  return "mat4";
+		case ValueType::VEC2F:    return "vec2";
+		case ValueType::VEC3F:    return "vec3";
+		case ValueType::VEC4F:    return "vec4";
+		case ValueType::MAT33F:  return "mat3";
+		case ValueType::MAT44F:  return "mat4";
 		case ValueType::SAMPLER2D: return "sampler2D";
 	}
 
@@ -308,9 +315,9 @@ CompilerGLSL::buildUniformBlocksString()
 
 	std::unordered_map<const UniformBufferInfo*, std::vector<const UniformExpression*>> expressionsSorted;
 
-	for (const auto& expression : mInstructionsList)
+	for (const auto& expression : mExpressions)
 	{
-		if (auto uniform = std::get_if<UniformExpression>(&expression->expression()))
+		if (auto uniform = std::get_if<UniformExpression>(expression))
 		{
 			expressionsSorted[uniform->bufferInfo().get()].push_back(uniform);
 		}
@@ -325,8 +332,11 @@ CompilerGLSL::buildUniformBlocksString()
 		{
 			ss << TAB << toString(member->valueType()) << " " << member->name() << ";\n";
 		}
-
 		ss << "};\n";
+	}
+
+	if (!expressionsSorted.empty())
+	{
 		ss << "\n";
 	}
 
@@ -341,9 +351,9 @@ CompilerGLSL::buildSamplerString()
 
 	std::set<const SamplerExpression*> samplers;
 
-	for (const auto& node : mInstructionsList)
+	for (auto expression : mExpressions)
 	{
-		if (auto sampler = std::get_if<SamplerExpression>(&node->expression()))
+		if (auto sampler = std::get_if<SamplerExpression>(expression))
 		{
 			samplers.insert(sampler);
 		}
@@ -351,10 +361,13 @@ CompilerGLSL::buildSamplerString()
 
 	for (auto sampler : samplers)
 	{
-		ss << std::format("layout(binding = {}) uniform sampler2D {};\n", sampler->location(), sampler->name());
+		ss << std::format("layout(set = {}, binding = {}) uniform sampler2D {};\n", 0, sampler->location(), sampler->name());
 	}
 
-	ss << "\n";
+	if (!samplers.empty())
+	{
+		ss << "\n";
+	}
 
 	return ss.str();
 }
@@ -378,7 +391,11 @@ CompilerGLSL::buildInputAttributeDefinitionsString()
 		ss << attr;
 	}
 
-	ss << "\n";
+	if (!attributesSorted.empty())
+	{
+		ss << "\n";
+	}
+
 	return ss.str();
 }
 
@@ -409,6 +426,11 @@ CompilerGLSL::buildOutputAttributeDefinitionsString()
 		ss << attr;
 	}
 
+	if (!attributesSorted.empty())
+	{
+		ss << "\n";
+	}
+
 	return ss.str();
 }
 
@@ -418,27 +440,28 @@ CompilerGLSL::buildMainFunctionString()
 {
 	std::stringstream ss;
 
-	ss << "void main()" << std::endl;
-	ss << "{" << std::endl;
+	ss << "void main()\n" ;
+	ss << "{\n";
 
-	for (auto node : mInstructionsList)
+	for (auto expr : mExpressions)
 	{
-		const auto& expr = node->expression();
-
-		if (std::holds_alternative<InputAttributeExpression>(expr)  ||
-			std::holds_alternative<OutputAttributeExpression>(expr) ||
-			std::holds_alternative<UniformExpression>(expr)         ||
-			std::holds_alternative<SamplerExpression>(expr))
+		if (std::holds_alternative<InputAttributeExpression>(*expr)  ||
+			std::holds_alternative<OutputAttributeExpression>(*expr) ||
+			std::holds_alternative<UniformExpression>(*expr)         ||
+			std::holds_alternative<SamplerExpression>(*expr))
 		{
 			continue;
 		}
 
-		if (auto op = std::get_if<OperatorExpression>(&expr))
+		auto node = std::visit(Visitor{ [](const auto& ex) { return ex.node(); } }, *expr);
+
+		if (auto op = std::get_if<OperatorExpression>(expr))
 		{
 			if (op->getOperator() == Operator::ASSIGNMENT)
 			{
 				ss << TAB << format(*op) << ";\n";
 			}
+			continue;
 		}
 
 		if (!node->inlineIfPossible())
@@ -463,7 +486,7 @@ CompilerGLSL::buildMainFunctionString()
 		}
 	}
 
-	ss << "}";
+	ss << "}\n";
 
 	return ss.str();
 }
@@ -474,7 +497,7 @@ CompilerGLSL::Compile(const ShaderGraph& shaderModule, ShaderStage stage)
 {
 	mShader = &shaderModule;
 	
-	mInstructionsList = mShader->expressions();
+	mExpressions = mShader->expressions();
 
 	Result result;
 
@@ -485,12 +508,12 @@ CompilerGLSL::Compile(const ShaderGraph& shaderModule, ShaderStage stage)
 	auto mainFunc	      = buildMainFunctionString();
 
 	std::stringstream ss;
-	ss << "#version 420" << std::endl;
-	ss << inputAttributes << std::endl;
-	ss << outputAttributes << std::endl;
-	ss << uniforms << std::endl;
-	ss << samplers << std::endl;
-	ss << mainFunc << std::endl;
+	ss << "#version 420\n\n";
+	ss << inputAttributes;
+	ss << outputAttributes;
+	ss << uniforms;
+	ss << samplers;
+	ss << mainFunc;
 
 	result.shaderCode = ss.str();
 

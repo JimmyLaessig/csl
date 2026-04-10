@@ -11,6 +11,7 @@ set(CSL_PROJECT_VERSION ${CSL_VERSION_MAJOR}.${CSL_VERSION_MINOR}.${CSL_VERSION_
 project(${PROJECT_NAME} VERSION ${CSL_PROJECT_VERSION})
 
 set(TARGET_NAME csl)
+set(ALIAS_TARGET_NAME csl::csl)
 
 string(TOUPPER "${TARGET_NAME}" TARGET_NAME_UPPERCASE)
 
@@ -33,6 +34,7 @@ endif()
 #######################################################################################################################
 
 add_library(${TARGET_NAME} ${TARGET_TYPE})
+add_library(${ALIAS_TARGET_NAME} ALIAS ${TARGET_NAME})
 
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -66,21 +68,20 @@ endif()
 set(HEADERS
     ${EXPORT_HEADER}
     ${INCLUDE_DIR}/csl/Attribute.hpp
-    ${INCLUDE_DIR}/csl/Binding.hpp
     ${INCLUDE_DIR}/csl/Compiler.hpp
     ${INCLUDE_DIR}/csl/CompilerGLSL.hpp
     ${INCLUDE_DIR}/csl/CompilerSPV.hpp
     ${INCLUDE_DIR}/csl/ControlFlow.hpp
+    ${INCLUDE_DIR}/csl/csl.hpp
     ${INCLUDE_DIR}/csl/Expressions.hpp
     ${INCLUDE_DIR}/csl/Functions.hpp
     ${INCLUDE_DIR}/csl/Matrix.hpp
     ${INCLUDE_DIR}/csl/Node.hpp
     ${INCLUDE_DIR}/csl/Sampler.hpp
-    ${INCLUDE_DIR}/csl/Scalar.hpp
     ${INCLUDE_DIR}/csl/ShaderGraph.hpp
-    ${INCLUDE_DIR}/csl/csl.hpp
     ${INCLUDE_DIR}/csl/UniformBuffer.hpp
     ${INCLUDE_DIR}/csl/Value.hpp
+    ${INCLUDE_DIR}/csl/ValueType.hpp
     ${INCLUDE_DIR}/csl/Vector.hpp
     ${INCLUDE_DIR}/csl/Visitor.hpp)
 
@@ -94,8 +95,8 @@ target_sources(${TARGET_NAME}
 set(SOURCES
     ${SOURCE_DIR}/CompilerGLSL.cpp
     ${SOURCE_DIR}/CompilerSPV.cpp
-    ${SOURCE_DIR}/Node.cpp
     ${SOURCE_DIR}/Expressions.cpp
+    ${SOURCE_DIR}/Node.cpp
     ${SOURCE_DIR}/ShaderGraph.cpp
     ${SOURCE_DIR}/Value.cpp)
 
@@ -130,3 +131,6 @@ if(MSVC)
                           COMPILE_PDB_OUTPUT_DIR        "${CMAKE_CURRENT_BINARY_DIR}"
                           VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 endif()
+
+add_subdirectory(examples)
+add_subdirectory(test)

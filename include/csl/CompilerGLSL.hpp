@@ -1,9 +1,18 @@
-#ifndef CORAL_SHADERGRAPH_COMPILERGLSL_HPP
-#define CORAL_SHADERGRAPH_COMPILERGLSL_HPP
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
+#ifndef CSL_COMPILERGLSL_HPP
+#define CSL_COMPILERGLSL_HPP
 
 #include <csl/Compiler.hpp>
 
-#include <optional>
+#include <csl/Expressions.hpp>
+
 #include <unordered_map>
 
 namespace csl
@@ -47,7 +56,7 @@ private:
 
 	std::string resolve(const Node& expr);
 
-	std::string formatFunctionArgumentList(const std::vector<ConstNodePtr>& expressions);
+	std::string formatFunctionArgumentList(const std::vector<std::shared_ptr<const Node>>& expressions);
 
 	std::string buildInputAttributeDefinitionsString();
 
@@ -59,7 +68,7 @@ private:
 
 	std::string buildSamplerString();
 
-	std::vector<ConstNodePtr> mInstructionsList;
+	std::vector<const Expression*> mExpressions;
 
 	const ShaderGraph* mShader{ nullptr };
 
@@ -70,6 +79,6 @@ private:
 	uint32_t mVarCounter{ 0 };
 };
 
-} // namespace Coral
+} // namespace csl
 
-#endif // !CORAL_SHADERGRAPH_SHADERGRAPHCOMPILERGLSL_HPP
+#endif // !CSL_COMPILERGLSL_HPP

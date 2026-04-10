@@ -1,5 +1,13 @@
-#ifndef CORAL_SHADERGRAPH_COMPILERSPV_HPP
-#define CORAL_SHADERGRAPH_COMPILERSPV_HPP
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
+#ifndef CSL_COMPILERSPV_HPP
+#define CSL_COMPILERSPV_HPP
 
 #include <csl/CompilerGLSL.hpp>
 
@@ -25,6 +33,6 @@ private:
 	Result mShaderSourceGLSL;
 };
 
-} // namespace Coral
+} // namespace csl
 
-#endif // !CORAL_SHADERGRAPH_COMPILERSPV_HPP
+#endif // !CSL_COMPILERSPV_HPP

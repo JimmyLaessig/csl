@@ -1,15 +1,20 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #include <csl/ShaderGraph.hpp>
 
-#include <csl/Visitor.hpp>
-
+#include <csl/Expressions.hpp>
 #include <csl/Node.hpp>
 
-
-#include <algorithm>
 #include <cassert>
 #include <ranges>
 #include <set>
-#include <unordered_set>
+
 
 using namespace csl;
 
@@ -75,12 +80,12 @@ ShaderGraph::outputs() const
 }
 
 
-std::vector<std::shared_ptr<const Node>>
+std::vector<const Expression*>
 ShaderGraph::expressions() const
 {
 	return mNodes
-		| std::views::as_const
-		| std::ranges::to<std::vector<std::shared_ptr<const Node>>>();
+		| std::views::transform([](const auto& node) { return &node->expression(); })
+		| std::ranges::to<std::vector<const Expression*>>();
 }
 
 
@@ -88,4 +93,29 @@ void
 ShaderGraph::addNode(std::shared_ptr<Node> node)
 {
 	mNodes.push_back(node);
+}
+
+
+static thread_local ShaderGraph* sCurrent = nullptr;
+
+void
+ShaderGraph::beginRecording()
+{
+	assert(!sCurrent && "Only one shader graph can be recorded at a time");
+	sCurrent = this;
+}
+
+
+void
+ShaderGraph::endRecording()
+{
+	assert(sCurrent == this && "Shader graph recording not start.");
+	sCurrent = nullptr;
+}
+
+
+ShaderGraph*
+ShaderGraph::current()
+{
+	return sCurrent;
 }

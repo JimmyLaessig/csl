@@ -1,9 +1,16 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #include <csl/CompilerSPV.hpp>
 
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Public/resource_limits_c.h>
 
-#include <iostream>
 #include <sstream>
 
 using namespace csl;
@@ -23,19 +30,6 @@ glslang_stage_t Convert(csl::ShaderStage stage)
 }
 
 } // namespace
-
-void
-printShaderCode(const std::string& code)
-{
-	uint32_t lineNumber = 1;
-
-	std::stringstream ss(code);
-	std::string line;
-	while (std::getline(ss, line, '\n'))
-	{
-		std::cout << lineNumber++ << ": " << line << std::endl;
-	}
-}
 
 
 std::expected<Compiler::Result, Compiler::Error>

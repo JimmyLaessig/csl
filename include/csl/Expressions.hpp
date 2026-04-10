@@ -1,7 +1,16 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #ifndef CSL_EXPRESSIONS_HPP
 #define CSL_EXPRESSIONS_HPP
 
-#include <csl/Value.hpp>
+#include <csl/Export.hpp>
+#include <csl/ValueType.hpp>
 
 #include <memory>
 #include <string>
@@ -13,48 +22,33 @@ namespace csl
 {
 
 class Node;
-using NodePtr = std::shared_ptr<Node>;
+using NodePtr      = std::shared_ptr<Node>;
 using ConstNodePtr = std::shared_ptr<const Node>;
 
-class ExpressionBase
+class CSL_API ExpressionBase
 {
 public:
-	ExpressionBase(ValueType type)
-		: mType(type)
-	{
-	}
+	ExpressionBase(ValueType typeId);
 
-	ValueType valueType() const
-	{
-		return mType;
-	}
+	ValueType valueType() const;
 
-	NodePtr node()
-	{
-		return mNode.lock();
-	}
+	NodePtr node();
 
-	ConstNodePtr node() const
-	{
-		return mNode.lock();
-	}
+	ConstNodePtr node() const;
 
-	virtual void setNode(NodePtr node)
-	{
-		mNode = node;
-	}
+	virtual void setNode(NodePtr node);
 
 private:
 
 	std::weak_ptr<Node> mNode;
 
-	ValueType mType{};
+	ValueType mValueType{};
 };
 
 
 /// Class defining a constant scalar value expression
 template<typename Scalar>
-class ConstantExpression : public ExpressionBase
+class CSL_API ConstantExpression : public ExpressionBase
 {
 public:
 
@@ -76,7 +70,10 @@ public:
 	{
 	}
 
-	Scalar value() const { return mValue; }
+	Scalar value() const
+	{ 
+		return mValue;
+	}
 
 private:
 
@@ -84,7 +81,7 @@ private:
 };
 
 
-enum class DefaultSemantics
+enum DefaultSemantics
 {
 	/// Set the position of a vertex in homogenous space. Every vertex shader must write out a parameter with this output.
 	/*
@@ -103,26 +100,17 @@ enum class DefaultSemantics
 
 
 /// Class defining a shader input attrribute
-class InputAttributeExpression : public ExpressionBase
+class CSL_API InputAttributeExpression : public ExpressionBase
 {
 public:
 
-	InputAttributeExpression(const ValueType& type, uint32_t location, std::string_view name)
-		: ExpressionBase(type)
-		, mLocation(location)
-		, mName(name)
-	{
-	}
+	InputAttributeExpression(const ValueType& type, uint32_t location, std::string_view name);
 
-	const std::string& name() const { return mName; }
+	const std::string& name() const;
 
-	uint32_t location() const { return mLocation; }
+	uint32_t location() const;
 
-	void setNode(NodePtr node) override
-	{
-		ExpressionBase::setNode(node);
-		//node->setInlineIfPossible();
-	}
+	void setNode(NodePtr node) override;
 
 private:
 
@@ -141,7 +129,7 @@ struct AttributeBinding
 using AttributeBindingInfo = std::variant<AttributeBinding, DefaultSemantics>;
 
 /// Class defining a shader output attribute
-class OutputAttributeExpression : public ExpressionBase
+class CSL_API OutputAttributeExpression : public ExpressionBase
 {
 public:
 
@@ -161,20 +149,11 @@ class UniformBufferInfo
 {
 public:
 
-	UniformBufferInfo(uint32_t location, std::string_view name)
-		: mLocation(location)
-		, mName(name)
-	{}
+	UniformBufferInfo(uint32_t location, std::string_view name);
 
-	const std::string& name() const
-	{
-		return mName;
-	}
+	const std::string& name() const;
 
-	uint32_t location() const
-	{
-		return mLocation;
-	}
+	uint32_t location() const;
 
 private:
 
@@ -184,53 +163,35 @@ private:
 };
 
 
-class UniformExpression : public ExpressionBase
+class CSL_API UniformExpression : public ExpressionBase
 {
 public:
 
-	UniformExpression(const ValueType& type, std::string_view name, std::shared_ptr<UniformBufferInfo> buffer)
-		: ExpressionBase(type)
-		, mName(name)
-		, mBufferInfo(buffer)
-	{
-	}
+	UniformExpression(const ValueType& type, std::string_view name, std::shared_ptr<UniformBufferInfo> buffer);
 
-	void setNode(NodePtr node) override
-	{
-		ExpressionBase::setNode(node);
-		//node->setInlineIfPossible();
-	}
+	void setNode(NodePtr node) override;
 
-	std::shared_ptr<const UniformBufferInfo> bufferInfo() const
-	{
-		return mBufferInfo;
-	}
+	std::shared_ptr<const UniformBufferInfo> bufferInfo() const;
 
-	const std::string& name() const { return mName; }
+	const std::string& name() const;
 
 private:
 
 	std::string mName;
 
 	std::shared_ptr< UniformBufferInfo> mBufferInfo;
-
 };
 
 
-class SamplerExpression : public ExpressionBase
+class CSL_API SamplerExpression : public ExpressionBase
 {
 public:
 
-	SamplerExpression(uint32_t location, std::string_view name)
-		: ExpressionBase(ValueType::SAMPLER2D)
-		, mName(name)
-		, mLocation(location)
-	{
-	}
+	SamplerExpression(uint32_t location, std::string_view name);
 
-	const std::string& name() const { return mName; }
+	const std::string& name() const;
 
-	uint32_t location() const { return mLocation; }
+	uint32_t location() const;
 
 private:
 
@@ -265,18 +226,15 @@ enum class Operator
 	NOT_EQUAL
 };
 
+
 /// Class defining an arithmetic operator expression
-class OperatorExpression : public ExpressionBase
+class CSL_API OperatorExpression : public ExpressionBase
 {
 public:
 
-	OperatorExpression(ValueType outputType, Operator op)
-		: ExpressionBase(outputType)
-		, mOperator(op)
-	{
-	}
+	OperatorExpression(ValueType outputType, Operator op);
 
-	Operator getOperator() const { return mOperator; }
+	Operator getOperator() const;
 
 private:
 
@@ -285,19 +243,20 @@ private:
 
 
 /// Class defining a cast operator expression
-class CastExpression : public ExpressionBase
+class CSL_API CastExpression : public ExpressionBase
 {
 public:
 
-	CastExpression(ValueType outputType)
-		: ExpressionBase(outputType)
-	{
-	}
+	CastExpression(ValueType outputType);
 };
 
 
 enum class NativeFunction
 {
+// --------------------------------------------------------------------------------------------------------------------
+// Vector functions
+// --------------------------------------------------------------------------------------------------------------------
+
 	// Normalize a vector
 	NORMALIZE, 
 	// Calculate the dot product of two vectors
@@ -308,25 +267,67 @@ enum class NativeFunction
 	LENGTH,
 	// Calculate the distance between two vectors
 	DISTANCE,
+
+// --------------------------------------------------------------------------------------------------------------------
+// Texture functions
+// --------------------------------------------------------------------------------------------------------------------
+
 	// Read from a sampler
 	SAMPLE,
 	// Size of a texture
 	TEXTURE_SIZE,
+	// Discard the pixel
+	DISCARD,
+
+// --------------------------------------------------------------------------------------------------------------------
+// Math functions
+// --------------------------------------------------------------------------------------------------------------------
+
+	// Linearly interpolate between two values
+	MIX,
+	// Return the lesser of two values
+	MIN,
+	// Return the greater of the two values
+	MAX,
+	// Return the absolute value of the value
+	ABS,
+	// Return the sign of the parameter
+	SIGN,
+
+// --------------------------------------------------------------------------------------------------------------------
+// Trigonometric functions
+// --------------------------------------------------------------------------------------------------------------------
+
+	// Return the square root of the parameter
+	SQRT,
+	// Return the inverse of the square root of the parameter
+	INVERSESQRT,
+	// Return the value of the first parameter raised to the power of the second
+	POW,
+	// Return the sine of the parameter
+	SIN,
+	// Return the cosine of the parameter
+	COS,
+	// Return the tangent of the parameter
+	TAN,
+	// Return the arcsine of the parameter
+	ASIN,
+	// Return the arccosine of the parameter
+	ACOS,
+	// Return the arc-tangent of the parameters
+	ATAN,
+
 };
 
 
 /// Class defining a native function call in the shader graph
-class NativeFunctionExpression : public ExpressionBase
+class CSL_API NativeFunctionExpression : public ExpressionBase
 {
 public:
 
-	NativeFunctionExpression(ValueType valueType, NativeFunction function)
-		: ExpressionBase(valueType)
-		, mFunction(function)
-	{
-	}
+	NativeFunctionExpression(ValueType valueType, NativeFunction function);
 
-	NativeFunction Function() const { return mFunction; }
+	NativeFunction Function() const;
 
 private:
 
@@ -335,14 +336,11 @@ private:
 
 
 /// Class defining a native constructor call in the shader graph
-class ConstructorExpression : public ExpressionBase
+class CSL_API ConstructorExpression : public ExpressionBase
 {
 public:
 
-	ConstructorExpression(ValueType valueType)
-		: ExpressionBase(valueType)
-	{
-	}
+	ConstructorExpression(ValueType valueType);
 };
 
 enum class Swizzle
@@ -356,23 +354,49 @@ enum class Swizzle
 };
 
 /// Class defining a swizzle operation in the shader graph
-class SwizzleExpression : public ExpressionBase
+class CSL_API SwizzleExpression : public ExpressionBase
 {
 public:
 
-	SwizzleExpression(ValueType outputType, Swizzle swizzle)
-		: ExpressionBase(outputType)
-		, mSwizzle(swizzle)
-	{
-	}
+	SwizzleExpression(ValueType outputType, Swizzle swizzle);
 
-	Swizzle swizzle() const { return mSwizzle; };
+	Swizzle swizzle() const;
 
 private:
 
 	Swizzle mSwizzle;
 };
 
+
+class CSL_API BeginScopeExpression : public ExpressionBase
+{
+public:
+	BeginScopeExpression();
+};
+
+class CSL_API EndScopeExpression : public ExpressionBase
+{
+public:
+	EndScopeExpression();
+};
+
+class CSL_API IfExpression : public ExpressionBase
+{
+public:
+	IfExpression();
+};
+
+class CSL_API ElseIfExpression : public ExpressionBase
+{
+public:
+	ElseIfExpression();
+};
+
+class CSL_API ElseExpression : public ExpressionBase
+{
+public:
+	ElseExpression();
+};
 
 using Expression = std::variant<ConstantExpression<float>, 
 	                            ConstantExpression<int>, 
@@ -385,7 +409,10 @@ using Expression = std::variant<ConstantExpression<float>,
 	                            CastExpression,
 	                            NativeFunctionExpression,
 	                            ConstructorExpression,
-	                            SwizzleExpression>;
+	                            SwizzleExpression, 
+								IfExpression, 
+								ElseIfExpression,
+								ElseExpression>;
 
 } // namespace csl
 

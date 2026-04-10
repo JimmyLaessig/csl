@@ -1,6 +1,13 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #ifndef CSL_MATRIX_HPP
 #define CSL_MATRIX_HPP
-
 
 #include <csl/Vector.hpp>
 
@@ -10,22 +17,33 @@ namespace csl
 template<typename T, size_t C, size_t R> requires (C == R) && (C == 3 || C == 4)
 struct Matrix;
 
+template<>
+struct TypeTraits<Matrix<float, 3, 3>> : std::true_type
+{
+	using ComponentType          = float;
+	constexpr static size_t C = 3;
+	constexpr static size_t R = 3;
+	constexpr static ValueType ValueType = ValueType::MAT33F;
+};
+
+template<>
+struct TypeTraits<Matrix<float, 4, 4>> : std::true_type
+{
+	using ComponentType       = float;
+	constexpr static size_t C = 4;
+	constexpr static size_t R = 4;
+	constexpr static ValueType ValueType = ValueType::MAT44F;
+};
+
+// \brief Concept to ensure M is a csl::Matrix of T with C columns and R rows
 template<typename M, typename T, size_t C, size_t R>
-concept MatrixType = std::same_as<std::remove_cvref_t<M>, Matrix<T, C, R>>;
+concept MatrixType = 
+	TypeTraits<std::remove_cvref_t<M>>::value &&
+	TypeTraits<std::remove_cvref_t<M>>::C == C &&
+	TypeTraits<std::remove_cvref_t<M>>::R == R &&
+	std::same_as<typename TypeTraits<std::remove_cvref_t<M>>::ComponentType, T>;
 
-template<>
-struct TypeTraits<Matrix<float, 3, 3>>
-{
-	constexpr static ValueType ValueType = ValueType::FLOAT3X3;
-};
-
-template<>
-struct TypeTraits<Matrix<float, 4, 4>>
-{
-	constexpr static ValueType ValueType = ValueType::FLOAT4X4;
-};
-
-/// Class representing a matrix value
+// \brief Class representing a matrix value
 template<typename T, size_t C, size_t R> requires (C == R) && (C == 3 || C == 4)
 struct CSL_API  Matrix : public Value
 {
@@ -38,7 +56,6 @@ public:
 	using Value::Value;
 
 	static constexpr ValueType ValueType = TypeTraits<Matrix<T, C, R>>::ValueType;
-
 
 	/// Create a new Matrix with the diagonal filled with the value
 	Matrix(T v)  requires (C == 3)
@@ -86,31 +103,22 @@ public:
 		return *this;
 	}
 
-	/// Matrix - vector multiplication operator
+	/// Matrix -multiplication operator
 	template<typename LHS, typename RHS>
 	friend Vector<T, C> operator*(LHS&& lhs, RHS&& rhs)
-		requires (MatrixType<LHS, T, C, R> && VectorType<RHS, T, C>) ||
+		requires (MatrixType<LHS, T, C, R> && MatrixType<RHS, T, C, R>) ||
+		         (MatrixType<LHS, T, C, R> && VectorType<RHS, T, C>)    ||
 				 (VectorType<LHS, T, C>    && MatrixType<RHS, T, C, R>)
 	{
 		return { Node::create(OperatorExpression(Vector<T, C>::ValueType, Operator::MULTIPLY),
-							  std::forward<LHS&&>(lhs).node(),
-							  std::forward<RHS&&>(rhs).node()) };
-	}
-
-	/// Matrix * Matrix operator
-	template<typename LHS, typename RHS>
-	friend Matrix<T, C, R> operator*(LHS&& lhs, RHS&& rhs)
-		requires (MatrixType<LHS, T, C, R> && MatrixType<RHS, T, C, R>)
-	{
-		return { Node::create(OperatorExpression(Vector<T, C>::ValueType, Operator::MULTIPLY),
-							  std::forward<LHS&&>(lhs).node(),
-							  std::forward<RHS&&>(rhs).node()) };
+							  std::forward<LHS>(lhs).node(),
+							  std::forward<RHS>(rhs).node()) };
 	}
 };
 
-using Float4x4 = Matrix<float, 4, 4>;
-using Float3x3 = Matrix<float, 3, 3>;
+using Mat33F = Matrix<float, 3, 3>;
+using Mat44F = Matrix<float, 4, 4>;
 
-} // namespace ShaderLanguage 
+} // namespace csl 
 
 #endif // !CSL_MATRIX_HPP

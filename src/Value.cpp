@@ -1,7 +1,14 @@
-#include <csl/Value.hpp>
-#include <csl/Node.hpp>
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
 
-#include <csl/UniformBuffer.hpp>
+#include <csl/Value.hpp>
+
+#include <csl/Node.hpp>
 
 using namespace csl;
 

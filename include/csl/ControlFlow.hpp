@@ -1,67 +1,76 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #ifndef CSL_CONTROLFLOW_HPP
 #define CSL_CONTROLFLOW_HPP
 
-#include <csl/Scalar.hpp>
+#include <csl/Vector.hpp>
+
+#include <concepts>
 
 namespace csl
 {
 
-//template<typename T>
-//struct Then
-//{
-//public:
-//	T Else(T value)
-//	{
-//		return T{ ShaderModule::current()->addExpression<ConditionalExpression>(mCondition.node(), mIf.node(), value.node()) };
-//	}
-//
-//	Then(const Then& other) = delete;
-//	Then(Then&& other) = delete;
-//
-//	Then& operator=(Then&& other) = delete;
-//	Then& operator=(const Then& other) = delete;
-//
-//private:
-//
-//	friend class If;
-//
-//	Then(Bool condition, T ifCond)
-//		: mCondition(condition)
-//		, mIf(ifCond)
-//	{
-//	}
-//
-//	std::shared_ptr<Expression> mCondition;
-//	T mIf;
-//};
-//
-//struct If
-//{
-//public:
-//
-//	If(Bool condition)
-//		: mCondition(condition.node())
-//	{
-//	}
-//
-//	template<typename T>
-//	Then<T> Then(T value)
-//	{
-//		return Then<T>(mCondition, value);
-//	}
-//
-//	If(const If& other) = delete;
-//	If(If&& other) = delete;
-//
-//	If& operator=(If&& other) = delete;
-//	If& operator=(const If& other) = delete;
-//
-//private:
-//
-//	std::shared_ptr<Expression> mCondition;
-//
-//};
+template <typename F>
+concept NullaryVoidFunction = std::invocable<F> &&
+                              std::same_as<std::invoke_result_t<F>, void>;
 
-} // namespace ShaderLanguage 
+
+struct ConditionBuilder
+{
+public:
+
+    ConditionBuilder(const ConditionBuilder&) = delete;
+    ConditionBuilder(ConditionBuilder&&) = delete;
+
+    ConditionBuilder& operator=(const ConditionBuilder&) = delete;
+    ConditionBuilder& operator=(ConditionBuilder&&) = delete;
+
+    template<VectorType<bool, 1> Cond, NullaryVoidFunction F>
+    ConditionBuilder(Cond&& condition, F&& func)
+    {
+        //Node::create(IfExpression(), std::forward<Cond>(condition).node());
+        //Node::create(BeginScopeExpression());
+        //func();
+        //Node::create(EndScopeExpression());
+    }
+
+    template<VectorType<bool, 1> Cond, NullaryVoidFunction F>
+    ConditionBuilder& ElseIf(Cond&& condition, F&& func)
+    {
+        /*Node::create(ElseIfExpression(), std::forward<Cond>(condition).node());
+        Node::create(BeginScopeExpression());
+        func();
+        Node::create(EndScopeExpression());*/
+        return *this;
+    }
+
+    template<NullaryVoidFunction F>
+    void Else(F&& func)
+    {
+        //Node::create(ElseExpression());
+        //Node::create(BeginScopeExpression());
+        //func();
+        //Node::create(EndScopeExpression());
+    }
+
+private:
+
+    ConditionBuilder() = default;
+};
+
+
+template<VectorType<bool, 1> Cond, NullaryVoidFunction F>
+ConditionBuilder If(Cond&& condition, F&& then)
+{
+    return ConditionBuilder(std::forward<Cond&&>(condition), std::forward<F&&>(then));
+}
+
+} // namespace csl 
 
 #endif // !CSL_CONTROLFLOW_HPP

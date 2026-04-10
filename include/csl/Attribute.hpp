@@ -1,212 +1,61 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #ifndef CSL_ATTRIBUTE_HPP
 #define CSL_ATTRIBUTE_HPP
 
-#include <csl/ShaderGraph.hpp>
+#include <csl/Expressions.hpp>
 #include <csl/Value.hpp>
-#include <csl/Binding.hpp>
 
-#include <concepts>
 #include <string_view>
-#include <iostream>
-#include <optional>
 
 namespace csl
 {
 
-enum Qualifier
-{
-	IN,
-	OUT,
-};
-
-
-template <size_t N>
-using Semantic = StringLiteral<N>;
-
-constexpr Semantic SV_POSITION = "SV_POSITION";
-
-constexpr Semantic SV_DEPTH = "SV_DEPTH";
-
-
-template<Semantic S>
-constexpr bool IsDefaultSemantic()
-{
-	return false;
-}
-
-
-template<>
-constexpr bool IsDefaultSemantic<SV_POSITION>()
-{
-	return true;
-}
-
-
-template<>
-constexpr bool IsDefaultSemantic<SV_DEPTH>()
-{
-	return true;
-}
-
-
-template<Semantic S>
-constexpr DefaultSemantics Convert()
-{
-	static_assert(false);
-}
-
-
-template<>
-constexpr DefaultSemantics Convert<SV_POSITION>()
-{
-	return DefaultSemantics::SV_POSITION;
-}
-
-
-template<>
-constexpr DefaultSemantics Convert<SV_DEPTH>()
-{
-	return DefaultSemantics::SV_DEPTH;
-}
-
-/// Class defining a shader input or output attribute
-/*
- * \param T the type of the attribute (must be derived from csl::Value)
- * \param S Semantic of the attribute.
- * \param L Location of the attribute ( Must be -1 if S is one of the default semantics)
- * \param Q Qualifier defining whether this is a shader input or output attribute (Must be OUT if S is one of the default semantics)
- *
- */
-template<typename T, Semantic S, Location L = Location(-1), Qualifier Q = Qualifier::OUT>
-class Attribute
+class CSL_API Attributes
 {
 public:
 
-	Attribute() requires (Q == Qualifier::IN)
-		: mValue(T(Node::create(InputAttributeExpression(T::ValueType, static_cast<uint32_t>(L), S))))
+	Attributes(bool input)
+		: mInput(input)
+	{}
+
+	template<typename T>
+	void RegisterAttribute(T& value, uint32_t location, std::string_view name)
 	{
-	}
-
-
-	Attribute() requires (Q == Qualifier::OUT)
-	{
-	}
-
-
-	~Attribute() requires (Q == Qualifier::OUT)
-	{
-		if (!mValue)
+		if (mInput)
 		{
-			mValue.emplace(MakeDefaultOutputAttributeExpression());
-		}
-	}
-
-
-	~Attribute() requires (Q == Qualifier::IN)
-	{
-	}
-
-
-	const T* operator->() const  requires (Q == Qualifier::IN)
-	{
-		return &mValue.value();
-	}
-
-
-	const T& operator*() const  requires (Q == Qualifier::IN)
-	{
-		return *mValue;
-	}
-
-
-	operator T() const requires (Q == Qualifier::IN)
-	{
-		return *mValue;
-	}
-
-
-	const T& Value() const  requires (Q == Qualifier::IN)
-	{
-		return *mValue;
-	}
-
-
-	Attribute& operator=(const T& value) requires (Q == Qualifier::OUT)
-	{
-		if (!mValue)
-		{
-			mValue.emplace(MakeOutputAttributeExpression(value));
+			value.node()->setExpression(InputAttributeExpression(value.node()->valueType(), location, name));
 		}
 		else
 		{
-			*mValue = value;
+			Node::create(OutputAttributeExpression(value.node()->valueType(), location, name), value.node());
 		}
-		return *this;
 	}
 
-
-	Attribute& operator=(T&& value) requires (Q == Qualifier::OUT)
+	template<typename T>
+	void RegisterAttribute(T& value, csl::DefaultSemantics semantic)
 	{
-		if (!mValue)
+		if (!mInput)
 		{
-			mValue.emplace(MakeOutputAttributeExpression(std::move(value)));
+			Node::create(OutputAttributeExpression(value.node()->valueType(), semantic), value.node());
 		}
 		else
 		{
-			*mValue = value;
+			value.node()->setInlineIfPossible();
 		}
-
-		return *this;
 	}
 
 private:
 
-	std::shared_ptr<Node>
-	MakeDefaultOutputAttributeExpression() requires (IsDefaultSemantic<S>())
-	{
-		T defaultValue;
-		return Node::create(OutputAttributeExpression(T::ValueType, Convert<S>()), std::move(defaultValue).node());
-	}
-
-
-	std::shared_ptr<Node>
-	MakeDefaultOutputAttributeExpression() requires (!IsDefaultSemantic<S>())
-	{
-		T defaultValue;
-		return Node::create(OutputAttributeExpression(T::ValueType, static_cast<uint32_t>(L), S), std::move(defaultValue).node());
-	}
-
-
-	std::shared_ptr<Node>
-	MakeOutputAttributeExpression(const T& value) requires (IsDefaultSemantic<S>())
-	{
-		return Node::create(OutputAttributeExpression(T::ValueType, Convert<S>()), value.node());
-	}
-
-
-	std::shared_ptr<Node>
-	MakeOutputAttributeExpression(const T& value) requires (!IsDefaultSemantic<S>())
-	{
-		return Node::create(OutputAttributeExpression(T::ValueType, static_cast<uint32_t>(L), S), value.node());
-	}
-
-
-	std::shared_ptr<Node>
-	MakeOutputAttributeExpression(T&& value) requires (IsDefaultSemantic<S>())
-	{
-		return Node::create(OutputAttributeExpression(T::ValueType, Convert<S>()), std::move(value).node());
-	}
-
-
-	std::shared_ptr<Node>
-	MakeOutputAttributeExpression(T&& value) requires (!IsDefaultSemantic<S>())
-	{
-		return Node::create(OutputAttributeExpression(T::ValueType, static_cast<uint32_t>(L), S), std::move(value).node());
-	}
-
-	std::optional<T> mValue;
+	bool mInput;
 };
 
-} // namespace ShaderLanguage 
+} // namespace csl 
 
 #endif // !CSL_ATTRIBUTE_HPP

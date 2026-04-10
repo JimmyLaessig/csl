@@ -1,95 +1,81 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #ifndef CSL_NODE_HPP
 #define CSL_NODE_HPP
 
 #include <csl/Expressions.hpp>
-#include <csl/ShaderGraph.hpp>
-#include <csl/Visitor.hpp>
-
-#include <memory>
-#include <ranges>
-#include <vector>
-
 
 namespace csl
 {
 
-/// Class representing an node in the shader graph
+class Node;
+
+// \brief Concept to ensure T is a std::shared_ptr<Node>
+template <typename T>
+concept NodePtrType = std::same_as<std::remove_cvref_t<T>, std::shared_ptr<Node>>;
+
+// \brief Class representing an node in the shader graph
 class CSL_API Node : public std::enable_shared_from_this<Node>
 {
 public:
 
-	template<typename ExpressionType>
-	Node(ExpressionType&& expression, const std::vector<NodePtr>& inputs)
-		: mExpression(std::forward<ExpressionType>(expression))
-		, mInputs(inputs)
+	Node(const Expression& expression, const std::vector<NodePtr>& inputs);
+
+	/** \brief Create a new node without inputs
+	 * \param expression The expression of the node
+	 * \return Returns a pointer to the created node.
+	 */
+	static NodePtr create(const Expression& expression);
+
+	/** \brief Create a new node with inputs
+	 * \param expression The expression of the node
+	 * \param inputs The nodes containing the inputs of the expression
+	 * \return Returns a pointer to the created node.
+	 */
+	static NodePtr create(const Expression& expression, const std::vector<NodePtr>& inputs);
+
+	/** \brief Create a new node with inputs
+	 * \param expression The expression of the node
+	 * \param inputs The nodes containing the inputs of the expression
+	 * \return Returns a pointer to the created node.
+	 */
+	template<NodePtrType ...Nodes>
+	static NodePtr create(const Expression& expression, Nodes&&... inputs)
 	{
+		return create(expression, std::vector<NodePtr>{ std::forward<Nodes>(inputs)... });
 	}
 
-	template<typename ExpressionType>
-	static NodePtr create(ExpressionType&& expression)
-	{
-		auto node = std::make_shared<Node>(std::forward<ExpressionType>(expression), std::vector<NodePtr>{});
+	// \brief Get the expression's value type
+	ValueType valueType() const;
 
-		std::visit(Visitor{ [&](auto& ex) { ex.setNode(node); } }, node->mExpression);
+	// \brief Get the expression
+	const Expression& expression() const;
 
-		if (auto shaderGraph = ShaderGraph::current())
-		{
-			shaderGraph->addNode(node);
-		}
+	/** \brief Set the expression
+	 * Replaces the current expression with the new one. The caller must ensure that current value types of the input
+	 * expressions match the required input value types of the new expression
+	 */
+	void setExpression(const Expression& expression);
 
-		return node;
-	}
+	/** \brief Get the list of inputs this expression
+	 * \return Returns a vector of pointers to this expression's inputs
+	 */
+	std::vector<std::shared_ptr<const Node>> inputs() const;
 
-	template<typename ExpressionType, typename ...Nodes>
-	static NodePtr create(ExpressionType&& expression, Nodes&&... inputs)
-	{
-		auto node = std::make_shared<Node>(std::forward<ExpressionType>(expression), std::vector<NodePtr>{ std::forward<Nodes>(inputs)... });
+	// \brief Flag indicating if the expression should be inlined during compilation
+	bool inlineIfPossible() const;
 
-		std::visit(Visitor{ [&](auto& ex) { ex.setNode(node); } }, node->mExpression);
-
-		if (auto shaderGraph = ShaderGraph::current())
-		{
-			shaderGraph->addNode(node);
-		}
-
-
-		return node;
-	}
-
-	// Get the type of the output value of this expression
-	ValueType valueType() const
-	{
-		return std::visit(Visitor{ [](const auto& ex) { return ex.valueType(); } }, mExpression);
-	}
-
-	const Expression& expression() const
-	{
-		return mExpression;
-	}
-
-	template<typename ExpressionType>
-	void setExpression(ExpressionType&& expression)
-	{
-		mExpression = std::forward<ExpressionType>(expression);
-		auto self = shared_from_this();
-		std::visit(Visitor{ [self](auto& ex) { ex.setNode(self); } }, mExpression);
-	}
-
-	// Get the list of inputs this expression
-	std::vector<std::shared_ptr<const Node>> inputs() const
-	{
-		return mInputs | std::ranges::to<std::vector<std::shared_ptr<const Node>>>();
-	}
-
-	bool inlineIfPossible() const
-	{
-		return mInline;
-	}
-
-	void setInlineIfPossible()
-	{
-		mInline = true;
-	}
+	/** \brief Mark the node's expression to be inlined during compilation
+	 * Inlining an expression has the effect that the compiler tries to skip an explicit variable declaration to store
+	 * the expressions output. Instead, the compiler is allowed to construct the expression in-place.
+	 */
+	void setInlineIfPossible();
 
 private:
 

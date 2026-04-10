@@ -12,7 +12,13 @@ set(GLSLANG_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 
 CPMAddPackage(
   NAME glslang
-  GIT_TAG vulkan-sdk-1.4.309.0
   GITHUB_REPOSITORY KhronosGroup/glslang
+  GIT_TAG vulkan-sdk-1.4.309.0
   PATCH_COMMAND python ./update_glslang_sources.py
+)
+
+CPMAddPackage(
+    NAME catch2
+    GIT_REPOSITORY catchorg/Catch2
+    GIT_TAG v3.4.0
 )

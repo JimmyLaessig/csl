@@ -1,43 +1,24 @@
+/**
+ * Copyright(c) 2026 Bernhard Rainer
+ * SPDX-License-Identifier: MIT
+ *
+ * This file is part of C++ Shader Language (CSL) and is licensed under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
+
 #ifndef CSL_VALUE_HPP
 #define CSL_VALUE_HPP
 
 #include <csl/Export.hpp>
 
+#include <csl/ValueType.hpp>
+
+#include <csl/Node.hpp>
+
 #include <memory>
 
 namespace csl
 {
-
-enum class ValueType
-{
-	/// Conditional type
-	BOOL,
-	/// 32-bit signed integer
-	INT,
-	/// 2-component 32-bit signed integer vector
-	INT2,
-	/// 3-component 32-bit signed integer vector
-	INT3,
-	/// 4-component 32-bit signed integer vector
-	INT4,
-	/// 32-bit single-precision floating-point number
-	FLOAT,
-	/// 2-component 32-bit single-precision floating-point vector
-	FLOAT2,
-	/// 3-component 32-bit single-precision floating-point vector
-	FLOAT3,
-	/// 4-component 32-bit single-precision floating-point vector
-	FLOAT4,
-	/// 3x3 32-bit single-precision floating-point matrix
-	FLOAT3X3,
-	/// 4x4 32-bit single-precision floating-point matrix
-	FLOAT4X4,
-	/// 2D texture sampler
-	SAMPLER2D,
-};
-
-
-class Node;
 
 /// Base struct for all values of shader graph expressions
 /**
@@ -68,6 +49,6 @@ private:
 	std::shared_ptr<Node> mNode;
 };
 
-} // namespace ShaderLanguage 
+} // namespace csl 
 
 #endif // !CSL_VALUE_HPP
