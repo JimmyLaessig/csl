@@ -9,7 +9,7 @@
 #include <csl/ShaderGraph.hpp>
 
 #include <csl/Expressions.hpp>
-#include <csl/Node.hpp>
+
 
 #include <cassert>
 #include <ranges>
@@ -22,94 +22,63 @@ using namespace csl;
 std::vector<const InputAttributeExpression*>
 ShaderGraph::inputs() const
 {
-	std::vector<const InputAttributeExpression*> result;
-	std::set<const InputAttributeExpression*> visited;
-	for (auto node : mNodes)
-	{
-		if (auto attr = std::get_if<InputAttributeExpression>(&node->expression()))
-		{
-			if (visited.insert(attr).second)
-			{
-				result.push_back(attr);
-			}
-		}
-	}
-
-	return result;
+	return mExpressions
+		| std::views::transform([](auto expr) { return expr->cast<InputAttributeExpression>(); })
+		| std::views::filter([](auto expr)    { return expr != nullptr; })
+		| std::ranges::to<std::vector<const InputAttributeExpression*>>();
 }
 
 
 std::vector<const UniformExpression*>
 ShaderGraph::uniforms() const
 {
-	std::vector<const UniformExpression*> result;
-	std::set<const UniformExpression*> visited;
-	for (auto node : mNodes)
-	{
-		if (auto uniform = std::get_if<UniformExpression>(&node->expression()))
-		{
-			if (visited.insert(uniform).second)
-			{
-				result.push_back(uniform);
-			}
-		}
-	}
-
-	return result;
+	return mExpressions
+		| std::views::transform([](auto expr) { return expr->cast<UniformExpression>(); })
+		| std::views::filter([](auto expr)    { return expr != nullptr; })
+		| std::ranges::to<std::vector<const UniformExpression*>>();
 }
 
 
 std::vector<const OutputAttributeExpression*>
 ShaderGraph::outputs() const
 {
-	std::vector<const OutputAttributeExpression*> result;
-	std::set<const OutputAttributeExpression*> visited;
-
-	for (auto node : mNodes)
-	{
-		if (auto attr = std::get_if<OutputAttributeExpression>(&node->expression()))
-		{
-			if (visited.insert(attr).second)
-			{
-				result.push_back(attr);
-			}
-		}
-	}
-
-	return result;
+	return mExpressions
+		| std::views::transform([](auto expr) { return expr->cast<OutputAttributeExpression>(); })
+		| std::views::filter([](auto expr)    { return expr != nullptr; })
+		| std::ranges::to<std::vector<const OutputAttributeExpression*>>();
 }
 
 
 std::vector<const Expression*>
 ShaderGraph::expressions() const
 {
-	return mNodes
-		| std::views::transform([](const auto& node) { return &node->expression(); })
+	return mExpressions
+		| std::views::transform([](const auto& expr) { return expr.get(); })
 		| std::ranges::to<std::vector<const Expression*>>();
 }
 
 
 void
-ShaderGraph::addNode(std::shared_ptr<Node> node)
+ShaderGraph::addNode(std::shared_ptr<Expression> expr)
 {
-	mNodes.push_back(node);
+	mExpressions.push_back(expr);
 }
 
 
 static thread_local ShaderGraph* sCurrent = nullptr;
 
 void
-ShaderGraph::beginRecording()
+ShaderGraph::beginScope(ShaderGraph& shaderGraph)
 {
 	assert(!sCurrent && "Only one shader graph can be recorded at a time");
-	sCurrent = this;
+	sCurrent = &shaderGraph;
 }
 
 
 void
-ShaderGraph::endRecording()
+ShaderGraph::endScope()
 {
-	assert(sCurrent == this && "Shader graph recording not start.");
+	assert(sCurrent && "Shader graph recording not start.");
 	sCurrent = nullptr;
 }
 

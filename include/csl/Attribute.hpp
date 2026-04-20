@@ -9,7 +9,6 @@
 #ifndef CSL_ATTRIBUTE_HPP
 #define CSL_ATTRIBUTE_HPP
 
-#include <csl/Expressions.hpp>
 #include <csl/Value.hpp>
 
 #include <string_view>
@@ -17,43 +16,57 @@
 namespace csl
 {
 
+ExpressionPtr RegisterAttribute(ValueType type, uint32_t location, std::string_view name);
+
+ExpressionPtr RegisterAttribute(ValueType type, DefaultSemantics semantic);
+
+template<typename T>
+ExpressionPtr RegisterAttribute(uint32_t location, std::string_view name)
+{
+	return RegisterAttribute(T::ValueType, location, name);
+}
+
+template<typename T>
+ExpressionPtr RegisterAttribute(DefaultSemantics semantic)
+{
+	return RegisterAttribute(T::ValueType, semantic);
+}
+
+
 class CSL_API Attributes
 {
 public:
 
 	Attributes(bool input)
 		: mInput(input)
-	{}
-
-	template<typename T>
-	void RegisterAttribute(T& value, uint32_t location, std::string_view name)
 	{
-		if (mInput)
-		{
-			value.node()->setExpression(InputAttributeExpression(value.node()->valueType(), location, name));
-		}
-		else
-		{
-			Node::create(OutputAttributeExpression(value.node()->valueType(), location, name), value.node());
-		}
 	}
 
-	template<typename T>
-	void RegisterAttribute(T& value, csl::DefaultSemantics semantic)
+	static inline void beginScope(Attributes& attributes)
 	{
-		if (!mInput)
-		{
-			Node::create(OutputAttributeExpression(value.node()->valueType(), semantic), value.node());
-		}
-		else
-		{
-			value.node()->setInlineIfPossible();
-		}
+		sCurrent = &attributes;
+	}
+
+	static inline void endScope()
+	{
+		sCurrent = nullptr;
+	}
+
+	static inline Attributes* current()
+	{
+		return sCurrent;
+	}
+
+	bool isInput() const
+	{ 
+		return mInput;
 	}
 
 private:
 
 	bool mInput;
+
+	static inline Attributes* sCurrent{ nullptr };
 };
 
 } // namespace csl 

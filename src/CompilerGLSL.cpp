@@ -57,15 +57,15 @@ toString(ValueType typeId)
 	{
 		case ValueType::BOOL:      return "bool";
 		case ValueType::INT:       return "int";
-		case ValueType::VEC2I:      return "ivec2";
-		case ValueType::VEC3I:      return "ivec3";
-		case ValueType::VEC4I:      return "ivec5";
+		case ValueType::VEC2I:     return "ivec2";
+		case ValueType::VEC3I:     return "ivec3";
+		case ValueType::VEC4I:     return "ivec5";
 		case ValueType::FLOAT:     return "float";
-		case ValueType::VEC2F:    return "vec2";
-		case ValueType::VEC3F:    return "vec3";
-		case ValueType::VEC4F:    return "vec4";
-		case ValueType::MAT33F:  return "mat3";
-		case ValueType::MAT44F:  return "mat4";
+		case ValueType::VEC2F:     return "vec2";
+		case ValueType::VEC3F:     return "vec3";
+		case ValueType::VEC4F:     return "vec4";
+		case ValueType::MAT33F:    return "mat3";
+		case ValueType::MAT44F:    return "mat4";
 		case ValueType::SAMPLER2D: return "sampler2D";
 	}
 
@@ -89,6 +89,7 @@ toString(Operator op)
 		case Operator::LESS:			 return "<";
 		case Operator::GREATER_OR_EQUAL: return ">=";
 		case Operator::LESS_OR_EQUAL:    return "<=";
+		case Operator::SUBSCRIPT:        return "[]";
 	}
 
 	std::unreachable();
@@ -107,6 +108,21 @@ toString(NativeFunction func)
 		case NativeFunction::DISTANCE:     return "distance";
 		case NativeFunction::SAMPLE:       return "texture";
 		case NativeFunction::TEXTURE_SIZE: return "textureSize";
+		case NativeFunction::DISCARD:      return "discard";
+		case NativeFunction::MIX:          return "mix";
+		case NativeFunction::MIN:          return "min";
+		case NativeFunction::MAX:          return "max";
+		case NativeFunction::ABS:          return "abs";
+		case NativeFunction::SIGN:         return "sign";
+		case NativeFunction::SQRT:         return "sqrt";
+		case NativeFunction::INVERSESQRT:  return "invsqrt";
+		case NativeFunction::POW:          return "pow";
+		case NativeFunction::SIN:          return "sin";
+		case NativeFunction::COS:          return "cos";
+		case NativeFunction::TAN:          return "tan";
+		case NativeFunction::ASIN:         return "asin";
+		case NativeFunction::ACOS:         return "acos";
+		case NativeFunction::ATAN:         return "atan";
 	}
 	std::unreachable();
 }
@@ -127,8 +143,81 @@ toString(Swizzle swizzle)
 	std::unreachable();
 }
 
+template<typename Func>
+auto visit(const csl::Expression& expr, Func&& func)
+{
+	if (auto ex = expr.cast<ConstantExpression<float>>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<ConstantExpression<int>>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<ConstantExpression<bool>>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<InputAttributeExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<OutputAttributeExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<OperatorExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<UniformBufferExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<UniformExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<NativeFunctionExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<ConstructorExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<CastExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<SwizzleExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<SamplerExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<IfExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<ElseIfExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<ElseExpression>())
+	{
+		return func(*ex);
+	}
+	if (auto ex = expr.cast<EndIfExpression>())
+	{
+		return func(*ex);
+	}
 
-constexpr auto TAB = "    ";
+	std::unreachable();
+}
+
 
 } // namespace
 
@@ -182,6 +271,12 @@ CompilerGLSL::format(const OutputAttributeExpression& expr)
 		} }, expr.BindingInfo());
 }
 
+std::string
+CompilerGLSL::format(const UniformBufferExpression& expr)
+{
+	return expr.name();
+}
+
 
 std::string
 CompilerGLSL::format(const UniformExpression& expr)
@@ -193,14 +288,20 @@ CompilerGLSL::format(const UniformExpression& expr)
 std::string
 CompilerGLSL::format(const OperatorExpression& expr)
 {
-	auto inputs = expr.node()->inputs();
+	auto inputs = expr.inputs();
 	if (expr.getOperator() == Operator::ASSIGNMENT)
 	{
 		auto lhs = resolve(*inputs[0]);
-		mNameLookUp[expr.node().get()] = lhs;
+		mNameLookUp[&expr] = lhs;
 		return std::format("{} {} {}",
 			               lhs,
 			               toString(expr.getOperator()),
+			               resolve(*inputs[1]));
+	}
+	else if (expr.getOperator() == Operator::SUBSCRIPT)
+	{
+		return std::format("{}[{}]",
+			               resolve(*inputs[0]),
 			               resolve(*inputs[1]));
 	}
 	else
@@ -216,9 +317,14 @@ CompilerGLSL::format(const OperatorExpression& expr)
 std::string
 CompilerGLSL::format(const NativeFunctionExpression& expr)
 {
+	if (expr.Function() == NativeFunction::DISCARD)
+	{
+		return "discard";
+	}
+
 	return std::format("{}({})",
 		               toString(expr.Function()),
-					   formatFunctionArgumentList(expr.node()->inputs()));
+					   formatFunctionArgumentList(expr.inputs()));
 }
 
 
@@ -227,14 +333,14 @@ CompilerGLSL::format(const ConstructorExpression& expr)
 {
 	return std::format("{}({})",
 					   toString(expr.valueType()),
-					   formatFunctionArgumentList(expr.node()->inputs()));
+					   formatFunctionArgumentList(expr.inputs()));
 }
 
 
 std::string
 CompilerGLSL::format(const CastExpression& expr)
 {
-	auto inputs = expr.node()->inputs();
+	auto inputs = expr.inputs();
 	return std::format("({}){}",
 					   toString(expr.valueType()),
 					   resolve(*inputs.front()));
@@ -244,22 +350,11 @@ CompilerGLSL::format(const CastExpression& expr)
 std::string
 CompilerGLSL::format(const SwizzleExpression& expr)
 {
-	auto inputs = expr.node()->inputs();
+	auto inputs = expr.inputs();
 	return std::format("{}.{}", 
 		               resolve(*inputs.front()),
 	                   toString(expr.swizzle()));
 }
-
-
-//std::string
-//CompilerGLSL::format(const ConditionalExpression& expr)
-//{
-//	auto inputs = expr.inputs();
-//	return std::format("({} ? {} : {})",
-//					   resolve(*inputs[0]),
-//					   resolve(*inputs[1]),
-//					   resolve(*inputs[2]));
-//}
 
 
 std::string
@@ -269,28 +364,58 @@ CompilerGLSL::format(const SamplerExpression& expr)
 }
 
 
-std::string
-CompilerGLSL::format(const Expression& expr)
+std::string 
+CompilerGLSL::format(const IfExpression& expr)
 {
-	return std::visit(Visitor{ [this](const auto& e) { return format(e); }}, expr);
+	auto cond = expr.inputs().front();
+	return std::format("if ({})", resolve(*cond));
+}
+
+
+std::string 
+CompilerGLSL::format(const ElseIfExpression& expr)
+{
+	auto cond = expr.inputs().front();
+	return std::format("else if ({})", resolve(*cond));
+}
+
+
+std::string 
+CompilerGLSL::format(const ElseExpression& expr)
+{
+	return "";
 }
 
 
 std::string
-CompilerGLSL::resolve(const Node& node)
+CompilerGLSL::format(const EndIfExpression& expr)
 {
-	auto iter = mNameLookUp.find(&node);
+	return "";
+}
+
+
+std::string
+CompilerGLSL::formatExpression(const Expression& expr)
+{
+	return visit(expr, [this](const auto& e) { return format(e); });
+}
+
+
+std::string
+CompilerGLSL::resolve(const Expression& expression)
+{
+	auto iter = mNameLookUp.find(&expression);
 	if (iter != mNameLookUp.end())
 	{
 		return iter->second;
 	}
 
-	return format(node.expression());
+	return formatExpression(expression);
 }
 
 
 std::string
-CompilerGLSL::formatFunctionArgumentList(const std::vector<ConstNodePtr>& args)
+CompilerGLSL::formatFunctionArgumentList(const std::vector<ConstExpressionPtr>& args)
 {
 	std::stringstream ss;
 
@@ -313,13 +438,21 @@ CompilerGLSL::buildUniformBlocksString()
 {
 	std::stringstream ss;
 
-	std::unordered_map<const UniformBufferInfo*, std::vector<const UniformExpression*>> expressionsSorted;
+	std::unordered_map<const UniformBufferExpression*, std::vector<const UniformExpression*>> expressionsSorted;
 
 	for (const auto& expression : mExpressions)
 	{
-		if (auto uniform = std::get_if<UniformExpression>(expression))
+		if (auto uniform = expression->cast<UniformExpression>())
 		{
-			expressionsSorted[uniform->bufferInfo().get()].push_back(uniform);
+			auto ex = uniform->inputs().front();
+			if (auto buffer = ex->cast<UniformBufferExpression>())
+			{
+				expressionsSorted[buffer].push_back(uniform);
+			}
+			else
+			{
+				assert(false);
+			}
 		}
 	}
 
@@ -330,7 +463,7 @@ CompilerGLSL::buildUniformBlocksString()
 
 		for (const auto& member : members)
 		{
-			ss << TAB << toString(member->valueType()) << " " << member->name() << ";\n";
+			ss << "    " << toString(member->valueType()) << " " << member->name() << ";\n";
 		}
 		ss << "};\n";
 	}
@@ -353,7 +486,7 @@ CompilerGLSL::buildSamplerString()
 
 	for (auto expression : mExpressions)
 	{
-		if (auto sampler = std::get_if<SamplerExpression>(expression))
+		if (auto sampler = expression->cast<SamplerExpression>())
 		{
 			samplers.insert(sampler);
 		}
@@ -377,7 +510,8 @@ std::string
 CompilerGLSL::buildInputAttributeDefinitionsString()
 {
 	std::map<uint32_t, std::string> attributesSorted;
-	for (const auto& attr : mShader->inputs())
+	auto inputs = mShader->inputs();
+	for (const auto& attr : inputs)
 	{
 		auto location = attr->location();
 		attributesSorted[location] = std::format("layout (location = {}) in {} {};\n",
@@ -443,46 +577,77 @@ CompilerGLSL::buildMainFunctionString()
 	ss << "void main()\n" ;
 	ss << "{\n";
 
+	uint32_t indentation = 1;
+	uint32_t tabSize     = 4;
+
+	auto tabs = [&]() { return std::string(indentation * tabSize, ' '); };
+
 	for (auto expr : mExpressions)
 	{
-		if (std::holds_alternative<InputAttributeExpression>(*expr)  ||
-			std::holds_alternative<OutputAttributeExpression>(*expr) ||
-			std::holds_alternative<UniformExpression>(*expr)         ||
-			std::holds_alternative<SamplerExpression>(*expr))
+		if (expr->cast<InputAttributeExpression>()  ||
+			expr->cast<OutputAttributeExpression>() ||
+			expr->cast<UniformExpression>()         ||
+			expr->cast<UniformBufferExpression>()   ||
+			expr->cast<SamplerExpression>())
 		{
 			continue;
 		}
 
-		auto node = std::visit(Visitor{ [](const auto& ex) { return ex.node(); } }, *expr);
-
-		if (auto op = std::get_if<OperatorExpression>(expr))
+		if (auto ex = expr->cast<IfExpression>())
 		{
-			if (op->getOperator() == Operator::ASSIGNMENT)
+			ss << tabs() << format(*ex) << "\n";
+			ss << tabs() << "{\n";
+
+			indentation++;
+			continue;
+		}
+		if (auto ex = expr->cast<ElseIfExpression>())
+		{
+			indentation--;
+			ss << tabs() << "}\n";
+			ss << tabs() << format(*ex) << "\n";
+			ss << tabs() << "{\n";
+			indentation++;
+			continue;
+		}
+
+		if (auto ex = expr->cast<ElseExpression>())
+		{
+			indentation--;
+			ss << tabs() << "}\n";
+			ss << tabs() << "else\n";
+			ss << tabs() << "{\n";
+			indentation++;
+			continue;
+		}
+
+		if (auto ex = expr->cast<EndIfExpression>())
+		{
+			indentation--;
+			ss << tabs() << "}\n";
+			continue;
+		}
+
+		if (auto ex = expr->cast<OperatorExpression>())
+		{
+			if (ex->getOperator() == Operator::ASSIGNMENT)
 			{
-				ss << TAB << format(*op) << ";\n";
+				ss << tabs() << format(*ex) << ";\n";
+				continue;
 			}
-			continue;
 		}
 
-		if (!node->inlineIfPossible())
+		if (!expr->inlineResult())
 		{
-			mNameLookUp[node.get()] = std::format("{}{}", getTypeShortName(node->valueType()), mVarCounter++);
-			ss << TAB << std::format("{} {} = {};\n", toString(node->valueType()), mNameLookUp[node.get()], format(node->expression()));
-			continue;
-		}
-	}
-
-	auto outputs = mShader->outputs();
-	for (const auto& output : outputs)
-	{
-		auto input = output->node()->inputs().front();
-		if (input->inlineIfPossible())
-		{
-			ss << TAB << std::format("{} = {};\n", format(*output), format(input->expression()));
-		}
-		else
-		{
-			ss << TAB << std::format("{} = {};\n", format(*output), mNameLookUp[input.get()]);
+			if (expr->valueType() != csl::ValueType::VOID)
+			{
+				mNameLookUp[expr] = std::format("{}{}", getTypeShortName(expr->valueType()), mVarCounter++);
+				ss << tabs() << std::format("{} {} = {};\n", toString(expr->valueType()), mNameLookUp[expr], formatExpression(*expr));
+			}
+			else
+			{
+				ss << tabs() << std::format("{};\n", formatExpression(*expr));
+			}
 		}
 	}
 

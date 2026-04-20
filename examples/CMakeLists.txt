@@ -10,7 +10,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(HEADERS
     ${INCLUDE_DIR}/DiffuseTextureFragmentShader.hpp
-    ${INCLUDE_DIR}/DiffuseTextureMaskedFragmentShader.hpp
+    ${INCLUDE_DIR}/OpacityMaskFragmentShader.hpp
     ${INCLUDE_DIR}/SimpleVertexShader.hpp)
 
 target_sources(${TARGET_NAME}

@@ -2,6 +2,7 @@
 #define CSL_EXAMPLES_DIFFUSETEXTUREFRAGMENTSHADER_HPP
 
 #include <csl/csl.hpp>
+
 #include "SimpleVertexShader.hpp"
 
 namespace csl::Examples
@@ -12,28 +13,15 @@ using FragmentInput = csl::Examples::VertexOutput;
 
 struct FragmentOutput
 {
-	csl::Vec4F color;
+	csl::Vec4F color{ csl::RegisterAttribute<csl::Vec4F>(0, "Color") };
 };
 
 
 struct LightData
 {
-	csl::Vec4F lightColor;
-	csl::Vec4F lightDirection;
+	csl::Vec4F lightColor    { csl::RegisterUniform<csl::Vec4F>("lightColor") };
+	csl::Vec4F lightDirection{ csl::RegisterUniform<csl::Vec4F>("lightDirection") };
 };
-
-
-inline void DefineType(FragmentOutput& output, csl::Attributes& attrs)
-{
-	attrs.RegisterAttribute(output.color, 0, "Color");
-}
-
-
-inline void DefineType(LightData& lightData, csl::UniformBufferBase& uniformBuffer)
-{
-	uniformBuffer.RegisterMember(lightData.lightColor, "lightColor");
-	uniformBuffer.RegisterMember(lightData.lightDirection, "lightDirection");
-}
 
 
 struct DiffuseTextureFragmentShader
@@ -50,21 +38,6 @@ struct DiffuseTextureFragmentShader
 		auto color       = colorTexture.sample(input.texcoord0).xyz();
 		output.color     = csl::Vec4F(color * lightData->lightColor.xyz() * n_dot_l, 1.f);
 
-		csl::Float b = csl::length(worldNormal);
-
-		csl::Float c = 0;
-		csl::If(b > 0.f, [&]
-		{
-		})
-		.ElseIf(b > c, [&]
-		{
-		})
-		.Else([&]
-		{
-		});
-		
-
-	
 		return output;
 	}
 };

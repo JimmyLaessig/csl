@@ -8,46 +8,23 @@ namespace csl::Examples
 
 struct VertexInput
 {
-	csl::Vec3F position;
-	csl::Vec3F normal;
-	csl::Vec2F texcoord0;
+	csl::Vec3F position { csl::RegisterAttribute<csl::Vec3F>(0, "Position") };
+	csl::Vec3F normal   { csl::RegisterAttribute<csl::Vec3F>(1, "Normal") };
+	csl::Vec2F texcoord0{ csl::RegisterAttribute<csl::Vec2F>(2, "Texcoord0") };
 };
 
 struct VertexOutput
 {
-	csl::Vec4F position;
-	csl::Vec3F worldNormal;
-	csl::Vec2F texcoord0;
+	csl::Vec4F position   { csl::RegisterAttribute<csl::Vec4F>(csl::DefaultSemantics::SV_POSITION) };
+	csl::Vec3F worldNormal{ csl::RegisterAttribute<csl::Vec3F>(0, "WorldNormal")};
+	csl::Vec2F texcoord0  { csl::RegisterAttribute<csl::Vec2F>(1, "Texcoord0")};
 };
 
 struct Matrices
 {
-	csl::Mat44F modelViewProjectionMatrix;
-	csl::Mat33F normalMatrix;
+	csl::Mat44F modelViewProjectionMatrix{ csl::RegisterUniform<csl::Mat44F>("modelViewProjectionMatrix")};
+	csl::Mat33F normalMatrix             { csl::RegisterUniform<csl::Mat33F>("normalMatrix") };
 };
-
-
-inline void DefineType(VertexInput& v, csl::Attributes& attrs)
-{
-	attrs.RegisterAttribute(v.position,  0, "Position");
-	attrs.RegisterAttribute(v.normal,    1, "Normal");
-	attrs.RegisterAttribute(v.texcoord0, 2, "Texcoord0");
-}
-
-
-inline void DefineType(VertexOutput& v, csl::Attributes& attrs)
-{
-	attrs.RegisterAttribute(v.position, csl::SV_POSITION);
-	attrs.RegisterAttribute(v.worldNormal, 0, "Normal");
-	attrs.RegisterAttribute(v.texcoord0,   1, "Texcoord0");
-}
-
-
-inline void DefineType(Matrices& matrices, csl::UniformBufferBase& uniformBuffer)
-{
-	uniformBuffer.RegisterMember(matrices.modelViewProjectionMatrix, "modelViewProjectionMatrix");
-	uniformBuffer.RegisterMember(matrices.normalMatrix, "normalMatrix");
-}
 
 
 struct SimpleVertexShader

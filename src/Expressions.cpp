@@ -8,49 +8,73 @@
 
 #include <csl/Expressions.hpp>
 
-#include <csl/Node.hpp>
+#include <csl/ShaderGraph.hpp>
 
 using namespace csl;
 
-ExpressionBase::ExpressionBase(ValueType type)
-	: mValueType(type)
+Expression::Expression(ValueType typeId, const std::vector<ExpressionPtr>& inputs)
+	: mValueType(typeId)
+	, mInputs(inputs)
+{
+}
+
+
+Expression::Expression(ValueType typeId)
+	: mValueType(typeId)
 {
 }
 
 
 ValueType
-ExpressionBase::valueType() const
+Expression::valueType() const
 {
 	return mValueType;
 }
 
 
-NodePtr
-ExpressionBase::node()
+void
+Expression::construct()
 {
-	return mNode.lock();
+	if (auto shaderGraph = ShaderGraph::current())
+	{
+		auto pThis = shared_from_this();
+		shaderGraph->addNode(pThis);
+	}
 }
 
 
-ConstNodePtr
-ExpressionBase::node() const
+std::vector<ConstExpressionPtr>
+Expression::inputs() const
 {
-	return mNode.lock();
+	std::vector<ConstExpressionPtr> result;
+	for (auto input : mInputs)
+	{
+		result.push_back(input);
+	}
+	return result;
+}
+
+
+bool
+Expression::inlineResult() const
+{
+	return mInline;
 }
 
 
 void
-ExpressionBase::setNode(NodePtr node)
+Expression::forceInlineResult()
 {
-	mNode = node;
+	mInline = true;
 }
 
 
 InputAttributeExpression::InputAttributeExpression(const ValueType& type, uint32_t location, std::string_view name)
-	: ExpressionBase(type)
+	: ExpressionBase<InputAttributeExpression>(type)
 	, mLocation(location)
 	, mName(name)
 {
+	forceInlineResult();
 }
 
 
@@ -60,29 +84,23 @@ InputAttributeExpression::name() const
 	return mName;
 }
 
+
 uint32_t
 InputAttributeExpression::location() const 
 { 
 	return mLocation;
 }
 
-void
-InputAttributeExpression::setNode(NodePtr node)
-{
-	ExpressionBase::setNode(node);
-	node->setInlineIfPossible();
-}
-
 
 OutputAttributeExpression::OutputAttributeExpression(ValueType valueType, uint32_t location, std::string_view name)
-	: ExpressionBase(valueType)
+	: ExpressionBase<OutputAttributeExpression>(valueType)
 	, mBindingInfo(AttributeBinding{ std::string(name), location })
 {
 }
 
 
 OutputAttributeExpression::OutputAttributeExpression(ValueType valueType, DefaultSemantics attribute)
-	: ExpressionBase(valueType)
+	: ExpressionBase<OutputAttributeExpression>(valueType)
 	, mBindingInfo(attribute)
 {
 }
@@ -95,47 +113,33 @@ OutputAttributeExpression::BindingInfo() const
 }
 
 
-UniformBufferInfo::UniformBufferInfo(uint32_t location, std::string_view name)
-	: mLocation(location)
+UniformBufferExpression::UniformBufferExpression(uint32_t location, std::string_view name)
+	: ExpressionBase<UniformBufferExpression>(ValueType::VOID)
+	, mLocation(location)
 	, mName(name)
 {
 }
 
 
 const std::string&
-UniformBufferInfo::name() const
+UniformBufferExpression::name() const
 {
 	return mName;
 }
 
 
 uint32_t 
-UniformBufferInfo::location() const
+UniformBufferExpression::location() const
 {
 	return mLocation;
 }
 
 
-UniformExpression::UniformExpression(const ValueType& type, std::string_view name, std::shared_ptr<UniformBufferInfo> buffer)
-	: ExpressionBase(type)
+UniformExpression::UniformExpression(const ValueType& type, std::string_view name, std::shared_ptr<UniformBufferExpression> buffer)
+	: ExpressionBase<UniformExpression>(type, buffer)
 	, mName(name)
-	, mBufferInfo(buffer)
 {
-}
-
-
-void
-UniformExpression::setNode(NodePtr node)
-{
-	ExpressionBase::setNode(node);
-	node->setInlineIfPossible();
-}
-
-
-std::shared_ptr<const UniformBufferInfo>
-UniformExpression::bufferInfo() const
-{
-	return mBufferInfo;
+	forceInlineResult();
 }
 
 
@@ -147,7 +151,7 @@ UniformExpression::name() const
 
 
 SamplerExpression::SamplerExpression(uint32_t location, std::string_view name)
-	: ExpressionBase(ValueType::SAMPLER2D)
+	: ExpressionBase<SamplerExpression>(ValueType::SAMPLER2D)
 	, mName(name)
 	, mLocation(location)
 {
@@ -168,8 +172,15 @@ SamplerExpression::location() const
 }
 
 
-OperatorExpression::OperatorExpression(ValueType outputType, Operator op)
-	: ExpressionBase(outputType)
+OperatorExpression::OperatorExpression(ValueType outputType, Operator op, ExpressionPtr arg0)
+	: ExpressionBase<OperatorExpression>(outputType, { arg0 })
+	, mOperator(op)
+{
+}
+
+
+OperatorExpression::OperatorExpression(ValueType outputType, Operator op, ExpressionPtr arg0, ExpressionPtr arg1)
+	: ExpressionBase<OperatorExpression>(outputType, { arg0, arg1 })
 	, mOperator(op)
 {
 }
@@ -182,15 +193,8 @@ OperatorExpression::getOperator() const
 }
 
 
-CastExpression::CastExpression(ValueType outputType)
-	: ExpressionBase(outputType)
-{
-}
-
-
-NativeFunctionExpression::NativeFunctionExpression(ValueType valueType, NativeFunction function)
-	: ExpressionBase(valueType)
-	, mFunction(function)
+CastExpression::CastExpression(ValueType outputType, ExpressionPtr input)
+	: ExpressionBase<CastExpression>(outputType, { input })
 {
 }
 
@@ -202,15 +206,9 @@ NativeFunction
 }
 
 
-ConstructorExpression::ConstructorExpression(ValueType valueType)
-	: ExpressionBase(valueType)
-{
-}
-
-
-SwizzleExpression::SwizzleExpression(ValueType outputType, Swizzle swizzle)
-		: ExpressionBase(outputType)
-		, mSwizzle(swizzle)
+SwizzleExpression::SwizzleExpression(ValueType outputType, Swizzle swizzle, ExpressionPtr input)
+	: ExpressionBase<SwizzleExpression>(outputType, { input })
+	, mSwizzle(swizzle)
 {
 }
 
@@ -222,31 +220,49 @@ SwizzleExpression::swizzle() const
 };
 
 
-BeginScopeExpression::BeginScopeExpression()
-	: ExpressionBase(ValueType::VOID)
+IfExpression::IfExpression(ExpressionPtr input)
+	: ExpressionBase<IfExpression>(ValueType::VOID, input)
 {
 }
 
 
-EndScopeExpression::EndScopeExpression()
-	: ExpressionBase(ValueType::VOID)
+ElseIfExpression::ElseIfExpression(ExpressionPtr condition, std::shared_ptr<IfExpression> input)
+	: ExpressionBase<ElseIfExpression>(ValueType::VOID, condition, input)
 {
 }
 
 
-IfExpression::IfExpression()
-	: ExpressionBase(ValueType::VOID)
+ElseIfExpression::ElseIfExpression(ExpressionPtr condition, std::shared_ptr<ElseIfExpression> input)
+	: ExpressionBase<ElseIfExpression>(ValueType::VOID, condition, input)
 {
 }
 
 
-ElseIfExpression::ElseIfExpression()
-	: ExpressionBase(ValueType::VOID)
+ElseExpression::ElseExpression(std::shared_ptr<IfExpression> input)
+	: ExpressionBase<ElseExpression>(ValueType::VOID, input)
 {
 }
 
 
-ElseExpression::ElseExpression()
-	: ExpressionBase(ValueType::VOID)
+ElseExpression::ElseExpression(std::shared_ptr<ElseIfExpression> input)
+	: ExpressionBase<ElseExpression>(ValueType::VOID, input)
+{
+}
+
+
+EndIfExpression::EndIfExpression(std::shared_ptr<IfExpression> input)
+	: ExpressionBase<EndIfExpression>(ValueType::VOID, input)
+{
+}
+
+
+EndIfExpression::EndIfExpression(std::shared_ptr<ElseIfExpression> input)
+	: ExpressionBase<EndIfExpression>(ValueType::VOID, input)
+{
+}
+
+
+EndIfExpression::EndIfExpression(std::shared_ptr<ElseExpression> input)
+	: ExpressionBase<EndIfExpression>(ValueType::VOID, input)
 {
 }

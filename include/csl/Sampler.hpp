@@ -31,18 +31,20 @@ struct CSL_API Sampler2D : Value
 	Vec4F sample(Vec&& uv) const
 	{
 		lazyInit();
-		return Vec4F(Node::create(NativeFunctionExpression(ValueType::VEC4F, NativeFunction::SAMPLE),
-			                       node(), 
-			                       std::forward<Vec>(uv).node()));
+		return { Expression::create<NativeFunctionExpression>(ValueType::VEC4F, 
+			                                                  NativeFunction::SAMPLE,
+															  expression(),
+															  std::forward<Vec>(uv).expression()) };
 	}
 
 	template<ScalarType<int> S>
 	Vec2I size(S&& lod) const
 	{
 		lazyInit();
-		return { Node::create(NativeFunctionExpression(ValueType::VEC3F, NativeFunction::TEXTURE_SIZE),
-			                  node(), 
-			                  std::forward<S>(lod).node()) };
+		return { Expression::create<NativeFunctionExpression>(ValueType::VEC3F, 
+			                                                  NativeFunction::TEXTURE_SIZE,
+			                                                  expression(), 
+			                                                  std::forward<S>(lod).expression()) };
 	}
 
 	Sampler2D(const Sampler2D&) = delete;
@@ -56,7 +58,10 @@ private:
 	void lazyInit() const
 	{
 		auto* self = const_cast<Sampler2D*>(this);
-		self->setNode(Node::create(SamplerExpression(mLocation, mName)));
+		if (!self->expression())
+		{
+			self->setExpression(Expression::create<SamplerExpression>(mLocation, mName));
+		}
 	}
 
 	uint32_t mLocation;

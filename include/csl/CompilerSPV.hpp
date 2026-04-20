@@ -28,7 +28,7 @@ private:
 
 	CompilerGLSL mCompilerGLSL;
 
-	const ShaderGraph* mShaderModule{ nullptr };
+	const ShaderGraph* mShaderGraph{ nullptr };
 
 	Result mShaderSourceGLSL;
 };

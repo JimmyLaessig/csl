@@ -38,6 +38,8 @@ private:
 
 	std::string format(const OperatorExpression& expr);
 
+	std::string format(const UniformBufferExpression& expr);
+
 	std::string format(const UniformExpression& expr);
 
 	std::string format(const NativeFunctionExpression& expr);
@@ -48,15 +50,21 @@ private:
 
 	std::string format(const SwizzleExpression& expr);
 
-	//std::string format(const ConditionalExpression& expr);
-
 	std::string format(const SamplerExpression& expr);
 
-	std::string format(const Expression& expr);
+	std::string format(const IfExpression& expr);
 
-	std::string resolve(const Node& expr);
+	std::string format(const ElseIfExpression& expr);
 
-	std::string formatFunctionArgumentList(const std::vector<std::shared_ptr<const Node>>& expressions);
+	std::string format(const ElseExpression& expr);
+
+	std::string format(const EndIfExpression& expr);
+
+	std::string formatExpression(const Expression& expr);
+
+	std::string resolve(const Expression& expr);
+
+	std::string formatFunctionArgumentList(const std::vector<std::shared_ptr<const Expression>>& expressions);
 
 	std::string buildInputAttributeDefinitionsString();
 
@@ -72,7 +80,7 @@ private:
 
 	const ShaderGraph* mShader{ nullptr };
 
-	std::unordered_map<const Node*, std::string> mNameLookUp;
+	std::unordered_map<const Expression*, std::string> mNameLookUp;
 
 	uint32_t mDefaultDescriptorSet{ 0 };
 

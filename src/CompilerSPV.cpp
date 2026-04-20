@@ -33,10 +33,10 @@ glslang_stage_t Convert(csl::ShaderStage stage)
 
 
 std::expected<Compiler::Result, Compiler::Error>
-CompilerSPV::Compile(const ShaderGraph& shaderModule, ShaderStage shaderStage)
+CompilerSPV::Compile(const ShaderGraph& shader, ShaderStage shaderStage)
 {
-	mShaderModule = &shaderModule;
-	return mCompilerGLSL.Compile(shaderModule, shaderStage).and_then([this, shaderStage](const Compiler::Result& result) { return CompileSPV(result, shaderStage); });
+	mShaderGraph = &shader;
+	return mCompilerGLSL.Compile(shader, shaderStage).and_then([this, shaderStage](const Compiler::Result& result) { return CompileSPV(result, shaderStage); });
 }
 
 

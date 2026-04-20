@@ -10,6 +10,9 @@
 #define CSL_CONTROLFLOW_HPP
 
 #include <csl/Vector.hpp>
+#include <csl/Visitor.hpp>
+
+#include <csl/Node.hpp>
 
 #include <concepts>
 
@@ -20,55 +23,68 @@ template <typename F>
 concept NullaryVoidFunction = std::invocable<F> &&
                               std::same_as<std::invoke_result_t<F>, void>;
 
+namespace detail
+{
+
 
 struct ConditionBuilder
 {
 public:
 
-    ConditionBuilder(const ConditionBuilder&) = delete;
-    ConditionBuilder(ConditionBuilder&&) = delete;
-
-    ConditionBuilder& operator=(const ConditionBuilder&) = delete;
-    ConditionBuilder& operator=(ConditionBuilder&&) = delete;
-
     template<VectorType<bool, 1> Cond, NullaryVoidFunction F>
     ConditionBuilder(Cond&& condition, F&& func)
     {
-        //Node::create(IfExpression(), std::forward<Cond>(condition).node());
-        //Node::create(BeginScopeExpression());
-        //func();
-        //Node::create(EndScopeExpression());
+        mExpression = Expression::create<IfExpression>(std::forward<Cond>(condition).expression());
+        func();
     }
 
     template<VectorType<bool, 1> Cond, NullaryVoidFunction F>
     ConditionBuilder& ElseIf(Cond&& condition, F&& func)
     {
-        /*Node::create(ElseIfExpression(), std::forward<Cond>(condition).node());
-        Node::create(BeginScopeExpression());
+        std::visit(Visitor{ [&](auto expr)
+        {
+            mExpression = Expression::create<ElseIfExpression>(std::forward<Cond>(condition).expression(),
+                                                               std::move(expr));
+        } }, mExpression);
+       
         func();
-        Node::create(EndScopeExpression());*/
         return *this;
     }
 
     template<NullaryVoidFunction F>
     void Else(F&& func)
     {
-        //Node::create(ElseExpression());
-        //Node::create(BeginScopeExpression());
-        //func();
-        //Node::create(EndScopeExpression());
+        std::visit(Visitor{ [&](auto expr)
+        {
+            Expression::create<ElseExpression>(expr);
+        } }, mExpression);
+
+        func();
+    }
+
+    ~ConditionBuilder()
+    {
+        std::visit(Visitor{ [&](auto expr)
+        {
+            if (expr)
+            {
+                Expression::create<EndIfExpression>(expr);
+            }
+        } }, mExpression);
     }
 
 private:
 
-    ConditionBuilder() = default;
+    std::variant<std::shared_ptr<IfExpression>, std::shared_ptr<ElseIfExpression>> mExpression;
+
 };
 
+} // namespace detail
 
 template<VectorType<bool, 1> Cond, NullaryVoidFunction F>
-ConditionBuilder If(Cond&& condition, F&& then)
+detail::ConditionBuilder If(Cond&& condition, F&& then)
 {
-    return ConditionBuilder(std::forward<Cond&&>(condition), std::forward<F&&>(then));
+    return detail::ConditionBuilder(std::forward<Cond>(condition), std::forward<F>(then));
 }
 
 } // namespace csl 

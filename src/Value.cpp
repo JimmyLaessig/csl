@@ -12,30 +12,30 @@
 
 using namespace csl;
 
-Value::Value(std::shared_ptr<Node> source)
-	: mNode(source)
+Value::Value(ExpressionPtr source)
+	: mExpression(source)
 {
 }
 
 
-std::shared_ptr<Node>
-Value::node() const &
+ExpressionPtr
+Value::expression() const &
 {
-	return mNode;
+	return mExpression;
 }
 
 
-std::shared_ptr<Node>
-Value::node() &&
+ExpressionPtr
+Value::expression() &&
 {
 	// Mark the source of this expression to be inlined if this is an r-value reference
-	mNode->setInlineIfPossible();
-	return mNode;
+	mExpression->forceInlineResult();
+	return mExpression;
 }
 
 
 void
-Value::setNode(std::shared_ptr<Node> source)
+Value::setExpression(ExpressionPtr source)
 {
-	mNode = source;
+	mExpression = source;
 }

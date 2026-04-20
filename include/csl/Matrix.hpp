@@ -77,42 +77,49 @@ public:
 
 	template<typename ...Ts> requires (sizeof...(Ts) == C * R)
 	Matrix(Ts... args)
-		: Value(Node::create(ConstructorExpression(Matrix::ValueType), Scalar<T>(args).node()...))
+		: Value(Expression::create<ConstructorExpression>(Matrix::ValueType, Scalar<T>(args).expression()...))
 	{
 	}
 
 	Matrix(const Matrix& other)
-		: Value(Node::create(ConstructorExpression(Matrix::ValueType), other.node()))
+		: Value(Expression::create<ConstructorExpression>(Matrix::ValueType, other.expression()))
 	{
 	}
 
 	Matrix(Matrix&& other)
-		: Value(Node::create(ConstructorExpression(Matrix::ValueType), other.node()))
+		: Value(Expression::create<ConstructorExpression>(Matrix::ValueType, other.expression()))
 	{
 	}
 
 	Matrix& operator=(const Matrix& other)
 	{
-		mNode = Node::create(OperatorExpression(Matrix::ValueType, Operator::ASSIGNMENT), node(), other.node());
+		setExpression(Expression::create<OperatorExpression>(Matrix::ValueType, 
+			                                                 Operator::ASSIGNMENT, 
+			                                                 expression(), 
+			                                                 other.expression()));
 		return *this;
 	}
 
 	Matrix& operator=(Matrix&& other)
 	{
-		mNode = Node::create(OperatorExpression(Matrix::ValueType, Operator::ASSIGNMENT), node(),other.node());
+		setExpression(Expression::create<OperatorExpression>(Matrix::ValueType,
+			                                                 Operator::ASSIGNMENT, 
+			                                                 expression(),
+			                                                 other.expression()));
 		return *this;
 	}
 
-	/// Matrix -multiplication operator
+	/// Matrix multiplication operator
 	template<typename LHS, typename RHS>
 	friend Vector<T, C> operator*(LHS&& lhs, RHS&& rhs)
 		requires (MatrixType<LHS, T, C, R> && MatrixType<RHS, T, C, R>) ||
 		         (MatrixType<LHS, T, C, R> && VectorType<RHS, T, C>)    ||
 				 (VectorType<LHS, T, C>    && MatrixType<RHS, T, C, R>)
 	{
-		return { Node::create(OperatorExpression(Vector<T, C>::ValueType, Operator::MULTIPLY),
-							  std::forward<LHS>(lhs).node(),
-							  std::forward<RHS>(rhs).node()) };
+		return { Expression::create<OperatorExpression>(Vector<T, C>::ValueType, 
+			                                            Operator::MULTIPLY,
+							                            std::forward<LHS>(lhs).expression(),
+							                            std::forward<RHS>(rhs).expression()) };
 	}
 };
 

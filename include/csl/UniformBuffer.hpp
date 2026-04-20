@@ -24,20 +24,17 @@ public:
 
 	virtual ~UniformBufferBase() = default;
 
-	UniformBufferBase(uint32_t location, std::string_view name)
-		: mBufferInfo(std::make_shared<UniformBufferInfo>(location, name))
-	{
-	}
+	UniformBufferBase(uint32_t location, std::string_view name);
 
-	template<typename T>
-	void RegisterMember(T& member, std::string_view name)
-	{
-		member.node()->setExpression(UniformExpression(T::ValueType, name, mBufferInfo));
-	}
+	static void beginScope(UniformBufferBase& uniformBuffer);
+
+	static void endScope();
+
+	std::shared_ptr<UniformBufferExpression> expression() const;
 
 private:
 
-	std::shared_ptr<UniformBufferInfo> mBufferInfo;
+	std::shared_ptr<UniformBufferExpression> mExpression;
 };
 
 
@@ -74,14 +71,25 @@ private:
 		{
 			return;
 		}
+		auto self = const_cast<UniformBuffer<T>*>(this);
 
+		beginScope(*self);
 		mValue.emplace();
-		auto* self = const_cast<UniformBuffer<T>*>(this);
-		DefineType(*mValue, *self);
+		endScope();
 	}
 
 	mutable std::optional<T> mValue;
+
 };
+
+ExpressionPtr
+RegisterUniform(ValueType type, std::string_view name);
+
+template<typename T>
+ExpressionPtr RegisterUniform(std::string_view name)
+{
+	return RegisterUniform(T::ValueType, name);
+}
 
 } // namespace csl 
 

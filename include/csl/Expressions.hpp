@@ -21,51 +21,126 @@
 namespace csl
 {
 
-class Node;
-using NodePtr      = std::shared_ptr<Node>;
-using ConstNodePtr = std::shared_ptr<const Node>;
+class Expression;
+using ExpressionPtr      = std::shared_ptr<Expression>;
+using ConstExpressionPtr = std::shared_ptr<const Expression>;
 
-class CSL_API ExpressionBase
+class CSL_API Expression : public std::enable_shared_from_this<Expression>
 {
 public:
-	ExpressionBase(ValueType typeId);
 
+	template<typename T, typename ...Args>
+	static std::shared_ptr<T> create(Args&&... args)
+	{
+		auto expression = std::make_shared<T>(std::forward<Args>(args)...);
+		expression->construct();
+
+		return expression;
+	}
+
+	template<typename ...Expressions>
+	Expression(ValueType valueType, Expressions&&... inputs)
+		: mValueType(valueType)
+		, mInputs({ std::forward<Expressions>(inputs)... })
+	{
+	}
+
+	Expression(ValueType valueType, const std::vector<ExpressionPtr>& inputs);
+
+	Expression(ValueType valueType);
+
+	// \brief Get the expression's value type
 	ValueType valueType() const;
 
-	NodePtr node();
+	/** \brief Get the list of inputs this expression
+	 * \return Returns a vector of pointers to this expression's inputs
+	 */
+	std::vector<ConstExpressionPtr> inputs() const;
 
-	ConstNodePtr node() const;
+	// \brief Flag indicating if the expression's result should be inlined during compilation
+	bool inlineResult() const;
 
-	virtual void setNode(NodePtr node);
+	/** \brief Mark the expression to be inlined during compilation
+	 * Inlining an expression notifies the compiler to skip an explicit variable declaration to store the expression's
+	 * result. Instead, the compiler is should construct the expression in-place.
+	 */
+	void forceInlineResult();
+
+	virtual size_t typeId() const = 0;
+
+	template<typename T>
+	T* cast()
+	{
+		if (typeId() == T::classTypeId())
+		{
+			return static_cast<T*>(this);
+		}
+		return nullptr;
+	}
+
+	template<typename T>
+	const T* cast() const
+	{
+		if (typeId() == T::classTypeId())
+		{
+			return static_cast<const T*>(this);
+		}
+		return nullptr;
+	}
+
+protected:
+
+	virtual void construct();
 
 private:
 
-	std::weak_ptr<Node> mNode;
-
 	ValueType mValueType{};
+
+	std::vector<ExpressionPtr> mInputs;
+
+	bool mInline{ false };
+
+};
+
+template<typename T>
+class CSL_API ExpressionBase : public Expression
+{
+public:
+	using Expression::Expression;
+
+	size_t typeId() const
+	{
+		return ExpressionBase<T>::classTypeId();
+	}
+
+	static size_t classTypeId()
+	{
+		static char sTypeId;
+		return reinterpret_cast<size_t>(&sTypeId);
+	}
 };
 
 
 /// Class defining a constant scalar value expression
 template<typename Scalar>
-class CSL_API ConstantExpression : public ExpressionBase
+class CSL_API ConstantExpression : public ExpressionBase<ConstantExpression<Scalar>>
 {
 public:
 
 	ConstantExpression(Scalar value) requires std::same_as<Scalar, int>
-		: ExpressionBase(ValueType::INT)
+		: ExpressionBase<ConstantExpression<Scalar>>(ValueType::INT)
 		, mValue(value)
 	{
 	}
 
 	ConstantExpression(Scalar value) requires std::same_as<Scalar, float>
-		: ExpressionBase(ValueType::FLOAT)
+		: ExpressionBase<ConstantExpression<Scalar>>(ValueType::FLOAT)
 		, mValue(value)
 	{
 	}
 
 	ConstantExpression(Scalar value) requires std::same_as<Scalar, bool>
-		: ExpressionBase(ValueType::BOOL)
+		: ExpressionBase<ConstantExpression<Scalar>>(ValueType::BOOL)
 		, mValue(value)
 	{
 	}
@@ -100,7 +175,7 @@ enum DefaultSemantics
 
 
 /// Class defining a shader input attrribute
-class CSL_API InputAttributeExpression : public ExpressionBase
+class CSL_API InputAttributeExpression : public ExpressionBase<InputAttributeExpression>
 {
 public:
 
@@ -109,8 +184,6 @@ public:
 	const std::string& name() const;
 
 	uint32_t location() const;
-
-	void setNode(NodePtr node) override;
 
 private:
 
@@ -129,7 +202,7 @@ struct AttributeBinding
 using AttributeBindingInfo = std::variant<AttributeBinding, DefaultSemantics>;
 
 /// Class defining a shader output attribute
-class CSL_API OutputAttributeExpression : public ExpressionBase
+class CSL_API OutputAttributeExpression : public ExpressionBase<OutputAttributeExpression>
 {
 public:
 
@@ -145,11 +218,11 @@ private:
 };
 
 
-class UniformBufferInfo
+class UniformBufferExpression : public ExpressionBase<UniformBufferExpression>
 {
 public:
 
-	UniformBufferInfo(uint32_t location, std::string_view name);
+	UniformBufferExpression(uint32_t location, std::string_view name);
 
 	const std::string& name() const;
 
@@ -163,27 +236,21 @@ private:
 };
 
 
-class CSL_API UniformExpression : public ExpressionBase
+class CSL_API UniformExpression : public ExpressionBase<UniformExpression>
 {
 public:
 
-	UniformExpression(const ValueType& type, std::string_view name, std::shared_ptr<UniformBufferInfo> buffer);
-
-	void setNode(NodePtr node) override;
-
-	std::shared_ptr<const UniformBufferInfo> bufferInfo() const;
+	UniformExpression(const ValueType& type, std::string_view name, std::shared_ptr<UniformBufferExpression> buffer);
 
 	const std::string& name() const;
 
 private:
 
 	std::string mName;
-
-	std::shared_ptr< UniformBufferInfo> mBufferInfo;
 };
 
 
-class CSL_API SamplerExpression : public ExpressionBase
+class CSL_API SamplerExpression : public ExpressionBase<SamplerExpression>
 {
 public:
 
@@ -223,16 +290,22 @@ enum class Operator
 	// '<=' operator
 	LESS_OR_EQUAL,
 	// '!=' operator
-	NOT_EQUAL
+	NOT_EQUAL,
+	// [] operator
+	SUBSCRIPT,
+	// ! operator
+	NOT,
 };
 
 
 /// Class defining an arithmetic operator expression
-class CSL_API OperatorExpression : public ExpressionBase
+class CSL_API OperatorExpression : public ExpressionBase<OperatorExpression>
 {
 public:
 
-	OperatorExpression(ValueType outputType, Operator op);
+	OperatorExpression(ValueType outputType, Operator op, ExpressionPtr arg0);
+
+	OperatorExpression(ValueType outputType, Operator op, ExpressionPtr arg0, ExpressionPtr arg1);
 
 	Operator getOperator() const;
 
@@ -243,11 +316,11 @@ private:
 
 
 /// Class defining a cast operator expression
-class CSL_API CastExpression : public ExpressionBase
+class CSL_API CastExpression : public ExpressionBase<CastExpression>
 {
 public:
 
-	CastExpression(ValueType outputType);
+	CastExpression(ValueType outputType, ExpressionPtr input);
 };
 
 
@@ -321,11 +394,16 @@ enum class NativeFunction
 
 
 /// Class defining a native function call in the shader graph
-class CSL_API NativeFunctionExpression : public ExpressionBase
+class CSL_API NativeFunctionExpression : public ExpressionBase<NativeFunctionExpression>
 {
 public:
 
-	NativeFunctionExpression(ValueType valueType, NativeFunction function);
+	template<typename ...Expressions>
+	NativeFunctionExpression(ValueType valueType, NativeFunction function, Expressions&&... inputs)
+		: ExpressionBase<NativeFunctionExpression>(valueType, std::vector<ExpressionPtr>{ std::forward<Expressions>(inputs)... })
+		, mFunction(function)
+	{
+	}
 
 	NativeFunction Function() const;
 
@@ -336,11 +414,10 @@ private:
 
 
 /// Class defining a native constructor call in the shader graph
-class CSL_API ConstructorExpression : public ExpressionBase
+class CSL_API ConstructorExpression : public ExpressionBase<ConstructorExpression>
 {
 public:
-
-	ConstructorExpression(ValueType valueType);
+	using ExpressionBase<ConstructorExpression>::ExpressionBase;
 };
 
 enum class Swizzle
@@ -354,11 +431,11 @@ enum class Swizzle
 };
 
 /// Class defining a swizzle operation in the shader graph
-class CSL_API SwizzleExpression : public ExpressionBase
+class CSL_API SwizzleExpression : public ExpressionBase<SwizzleExpression>
 {
 public:
 
-	SwizzleExpression(ValueType outputType, Swizzle swizzle);
+	SwizzleExpression(ValueType outputType, Swizzle swizzle, ExpressionPtr input);
 
 	Swizzle swizzle() const;
 
@@ -368,51 +445,33 @@ private:
 };
 
 
-class CSL_API BeginScopeExpression : public ExpressionBase
+class CSL_API IfExpression : public ExpressionBase<IfExpression>
 {
 public:
-	BeginScopeExpression();
+	IfExpression(ExpressionPtr condition);
 };
 
-class CSL_API EndScopeExpression : public ExpressionBase
+class CSL_API ElseIfExpression : public ExpressionBase<ElseIfExpression>
 {
 public:
-	EndScopeExpression();
+	ElseIfExpression(ExpressionPtr condition, std::shared_ptr<IfExpression> input);
+	ElseIfExpression(ExpressionPtr condition, std::shared_ptr<ElseIfExpression> input);
 };
 
-class CSL_API IfExpression : public ExpressionBase
+class CSL_API ElseExpression : public ExpressionBase<ElseExpression>
 {
 public:
-	IfExpression();
+	ElseExpression(std::shared_ptr<IfExpression> input);
+	ElseExpression(std::shared_ptr<ElseIfExpression> input);
 };
 
-class CSL_API ElseIfExpression : public ExpressionBase
+class CSL_API EndIfExpression : public ExpressionBase<EndIfExpression>
 {
 public:
-	ElseIfExpression();
+	EndIfExpression(std::shared_ptr<IfExpression> input);
+	EndIfExpression(std::shared_ptr<ElseIfExpression> input);
+	EndIfExpression(std::shared_ptr<ElseExpression> input);
 };
-
-class CSL_API ElseExpression : public ExpressionBase
-{
-public:
-	ElseExpression();
-};
-
-using Expression = std::variant<ConstantExpression<float>, 
-	                            ConstantExpression<int>, 
-	                            ConstantExpression<bool>,
-	                            InputAttributeExpression,
-	                            OutputAttributeExpression,
-	                            UniformExpression,
-	                            SamplerExpression,
-	                            OperatorExpression,
-	                            CastExpression,
-	                            NativeFunctionExpression,
-	                            ConstructorExpression,
-	                            SwizzleExpression, 
-								IfExpression, 
-								ElseIfExpression,
-								ElseExpression>;
 
 } // namespace csl
 

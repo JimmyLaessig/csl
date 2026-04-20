@@ -172,7 +172,7 @@ public:
 
     // \brief Default constructor for a scalar
     Vector() requires (S == 1)
-        : Vector(Node::create(ConstantExpression<T>(0)))
+        : Vector(Expression::create<ConstantExpression<T>>(T(0)))
     {
     }
 
@@ -196,94 +196,162 @@ public:
 
     // \brief Construct a scalar from a constant
     Vector(T arg) requires (S == 1)
-        : Value(Node::create(ConstantExpression<T>(arg)))
+        : Value(Expression::create<ConstantExpression<T>>(arg))
     {
     }
 
     // \brief Construct a vector from scalars
     template<typename ...Ts> requires (sizeof...(Ts) == S && S > 1)
         Vector(Ts&&... args)
-        : Value(Node::create(ConstructorExpression(ValueType),
-            (Scalar<T>(std::forward<Ts>(args)).node())...))
+        : Value(Expression::create<ConstructorExpression>(ValueType,
+                                                          Scalar<T>(std::forward<Ts>(args)).expression()...))
     {
     }
 
     // \brief Construct a vector from a smaller vector with the scalar values appended at the end
     template<size_t S2, typename ...Ts> requires (sizeof...(Ts) + S2 == S)
         Vector(const Vector<T, S2>& v, Ts&&... args)
-        : Value(Node::create(ConstructorExpression(ValueType),
-            v.node(), (Scalar<T>(std::forward<Ts>(args)).node())...))
+        : Value(Expression::create<ConstructorExpression>(ValueType,
+                                                          v.expression(), 
+                                                          Scalar<T>(std::forward<Ts>(args)).expression()...))
     {
     }
 
     // \brief Copy constructor
     Vector(const Vector& other)
-        : Value(Node::create(ConstructorExpression(ValueType), other.node()))
+        : Value(Expression::create<ConstructorExpression>(ValueType, other.expression()))
     {
     }
 
     // \brief Move constructor
     Vector(Vector&& other)
-        : Value(other.node())
+        : Value(std::move(other).expression())
     {
     }
- 
+
     // \brief Copy assignment operator
-    Vector<T, S>& operator=(const Vector<T, S>& other)
+    Vector<T, S>& operator=(const Vector<T, S>& other) &
     {
-        setNode(Node::create(OperatorExpression(ValueType, Operator::ASSIGNMENT), 
-                                                node(), other.node()));
+        setExpression(Expression::create<OperatorExpression>(ValueType, 
+                                                             Operator::ASSIGNMENT, 
+                                                             expression(), 
+                                                             other.expression()));
         return *this;
     }
 
     // \brief Move assignment operator
-    Vector<T, S>& operator=(Vector<T, S>&& other)
+    Vector<T, S>& operator=(Vector<T, S>&& other) &
     {
-        setNode(Node::create(OperatorExpression(ValueType, Operator::ASSIGNMENT), 
-                                                node(), other.node()));
+        setExpression(Expression::create<OperatorExpression>(ValueType,
+                                                             Operator::ASSIGNMENT,
+                                                             expression(), 
+                                                             other.expression()));
+        return *this;
+    }
+
+    // \brief Copy assignment operator
+    Vector<T, S>& operator=(const Vector<T, S>& other) &&
+    {
+        expression()->forceInlineResult();
+        setExpression(Expression::create<OperatorExpression>(ValueType,
+            Operator::ASSIGNMENT,
+            expression(),
+            other.expression()));
+        return *this;
+    }
+
+    // \brief Move assignment operator
+    Vector<T, S>& operator=(Vector<T, S>&& other) &&
+    {
+        expression()->forceInlineResult();
+        setExpression(Expression::create<OperatorExpression>(ValueType,
+            Operator::ASSIGNMENT,
+            expression(),
+            other.expression()));
         return *this;
     }
 
     // \brief Get the x component of the vector
     Vector<T, 1> x(this auto&& self) requires(S > 1)
     {
-        return { Node::create(SwizzleExpression(Vector<T, 1>::ValueType, Swizzle::X), 
-                              std::forward<decltype(self)>(self).node()) };
+        return { Expression::create<SwizzleExpression>(Vector<T, 1>::ValueType, 
+                                                       Swizzle::X,
+                                                       std::forward<decltype(self)>(self).expression()) };
     }
 
     // \brief Get the y component of the vector
     Vector<T, 1> y(this auto&& self) requires(S > 1)
     {
-        return { Node::create(SwizzleExpression(Vector<T, 1>::ValueType, Swizzle::Y), 
-                              std::forward<decltype(self)>(self).node()) };
+        return { Expression::create<SwizzleExpression>(Vector<T, 1>::ValueType, 
+                                                       Swizzle::Y, 
+                                                       std::forward<decltype(self)>(self).expression()) };
     }
 
     // \brief Get the z component of the vector
     Vector<T, 1> z(this auto&& self) requires(S >= 3)
     {
-        return { Node::create(SwizzleExpression(Vector<T, 1>::ValueType, Swizzle::Z), 
-                              std::forward<decltype(self)>(self).node()) };
+        return { Expression::create<SwizzleExpression>(Vector<T, 1>::ValueType, 
+                                                       Swizzle::Z,
+                                                       std::forward<decltype(self)>(self).expression()) };
     }
 
     // \brief Get the w component of the vector
     Vector<T, 1> w(this auto&& self) requires(S >= 4)
     {
-        return { Node::create(SwizzleExpression(Vector<T, 1>::ValueType, Swizzle::W), 
-                              std::forward<decltype(self)>(self).node()) };
+        return { Expression::create<SwizzleExpression>(Vector<T, 1>::ValueType, 
+                                                       Swizzle::W, 
+                                                       std::forward<decltype(self)>(self).expression()) };
     }
 
     // \brief Get the xy components of the vector
     Vector<T, 2> xy(this auto&& self)
     {
-        return { Node::create(SwizzleExpression(Vector<T, 2>::ValueType, Swizzle::XY), 
-                              std::forward<decltype(self)>(self).node()) };
+        return { Expression::create<SwizzleExpression>(Vector<T, 2>::ValueType, 
+                                                       Swizzle::XY, 
+                                                       std::forward<decltype(self)>(self).expression()) };
     }
 
     // \brief Get the xyz components of the vector
     Vector<T, 3> xyz(this auto&& self) requires(S >= 3)
     {
-        return { Node::create(SwizzleExpression(Vector<T, 3>::ValueType, Swizzle::XYZ), 
-                              std::forward<decltype(self)>(self).node())};
+        return { Expression::create<SwizzleExpression>(Vector<T, 3>::ValueType, 
+                                                       Swizzle::XYZ, 
+                                                       std::forward<decltype(self)>(self).expression())};
+    }
+
+    Scalar<T> operator[](int i) const & requires (S > 1)
+    {
+        return { Expression::create<OperatorExpression>(Scalar<T>::ValueType, 
+                                                        Operator::SUBSCRIPT,
+                                                        expression(),
+                                                        Scalar<int>(i).expression()) };
+    }
+
+    template <ScalarType<int> T>
+    Scalar<T> operator[](T&& i) const & requires (S > 1)
+    {
+        return { Expression::create<OperatorExpression>(Scalar<T>::ValueType,
+                                                        Operator::SUBSCRIPT,
+                                                        expression(),
+                                                        Scalar<int>(i).expression()) };
+    }
+
+    Scalar<T> operator[](int i) && requires (S > 1)
+    {
+        auto node = std::forward<Value>(*this).expression();
+        return { Expression::create<OperatorExpression>(Scalar<T>::ValueType, 
+                                                        Operator::SUBSCRIPT,
+                                                        node,
+                                                        Scalar<int>(i).expression()) };
+    }
+
+    template <ScalarType<int> T>
+    Scalar<T> operator[](T&& i) && requires (S > 1)
+    {
+        return { Expression::create<OperatorExpression>(Scalar<T, 3>::ValueType, 
+                                                        Operator::SUBSCRIPT,
+                                                        std::forward<decltype(*this)>(*this).expression(),
+                                                        std::forward<T>(i).expression()) };
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -297,9 +365,10 @@ public:
              VectorType<LHS, T, 1> && VectorType<RHS, T, S>
     friend Vector<T, S> operator*(LHS&& lhs, RHS&& rhs)
     {
-        return { Node::create(OperatorExpression(Vector<T, S>::ValueType, Operator::MULTIPLY),
-                              std::forward<LHS>(lhs).node(),
-                              std::forward<RHS>(rhs).node()) };
+        return { Expression::create<OperatorExpression>(Vector<T, S>::ValueType, 
+                                                        Operator::MULTIPLY,
+                                                        std::forward<LHS>(lhs).expression(),
+                                                        std::forward<RHS>(rhs).expression()) };
     }
 
     // \brief vector * constant operator
@@ -327,9 +396,10 @@ public:
              VectorType<LHS, T, 1> && VectorType<RHS, T, S>
     friend Vector<T, S> operator/(LHS&& lhs, RHS&& rhs)
     {
-        return { Node::create(OperatorExpression(Vector<T, S>::ValueType, Operator::DIVIDE),
-                              std::forward<LHS>(lhs).node(),
-                              std::forward<RHS>(rhs).node()) };
+        return { Expression::create<OperatorExpression>(Vector<T, S>::ValueType, 
+                                                        Operator::DIVIDE,
+                                                        std::forward<LHS>(lhs).expression(),
+                                                        std::forward<RHS>(rhs).expression()) };
     }
 
     // \brief vector / constant operator
@@ -372,9 +442,10 @@ template<typename LHS, typename RHS>
 requires SameScalars<LHS, RHS>
 Scalar<bool> operator>(LHS&& lhs, RHS&& rhs)
 {
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::GREATER),
-                          std::forward<LHS>(lhs).node(),
-                          std::forward<RHS>(rhs).node() )};
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::GREATER,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    std::forward<RHS>(rhs).expression() )};
 }
 
 template<typename LHS, typename RHS>
@@ -382,9 +453,10 @@ requires ScalarAndConstant<LHS, RHS>
 Scalar<bool> operator>(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::GREATER),
-                          std::forward<LHS>(lhs).node(),
-                          Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::GREATER,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -392,9 +464,10 @@ requires ConstantAndScalar<LHS, RHS>
 Scalar<bool> operator>(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::GREATER),
-                        std::forward<LHS>(lhs).node(),
-                        Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::GREATER,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -405,9 +478,10 @@ template<typename LHS, typename RHS>
 requires SameScalars<LHS, RHS>
 Scalar<bool> operator<(LHS&& lhs, RHS&& rhs)
 {
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::LESS),
-                          std::forward<LHS>(lhs).node(),
-                          std::forward<RHS>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::LESS,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    std::forward<RHS>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -415,9 +489,10 @@ requires ScalarAndConstant<LHS, RHS>
 Scalar<bool> operator<(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::LESS),
-                          std::forward<LHS>(lhs).node(),
-                          Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::LESS,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -425,9 +500,10 @@ requires ConstantAndScalar<LHS, RHS>
 Scalar<bool> operator<(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::LESS),
-                        std::forward<LHS>(lhs).node(),
-                        Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::LESS,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -438,9 +514,10 @@ template<typename LHS, typename RHS>
 requires SameScalars<LHS, RHS>
 Scalar<bool> operator>=(LHS&& lhs, RHS&& rhs)
 {
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::GREATER_OR_EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          std::forward<RHS>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::GREATER_OR_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    std::forward<RHS>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -448,9 +525,10 @@ requires ScalarAndConstant<LHS, RHS>
 Scalar<bool> operator>=(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::GREATER_OR_EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::GREATER_OR_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -458,9 +536,10 @@ requires ConstantAndScalar<LHS, RHS>
 Scalar<bool> operator>=(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::GREATER_OR_EQUAL),
-                        std::forward<LHS>(lhs).node(),
-                        Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::GREATER_OR_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -471,9 +550,10 @@ template<typename LHS, typename RHS>
 requires SameScalars<LHS, RHS>
 Scalar<bool> operator<=(LHS && lhs, RHS && rhs)
 {
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::LESS_OR_EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          std::forward<RHS>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType,
+                                                    Operator::LESS_OR_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    std::forward<RHS>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -481,9 +561,10 @@ requires ScalarAndConstant<LHS, RHS>
 Scalar<bool> operator<=(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::LESS_OR_EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::LESS_OR_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -491,9 +572,10 @@ requires ConstantAndScalar<LHS, RHS>
 Scalar<bool> operator<=(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::LESS_OR_EQUAL),
-                        std::forward<LHS>(lhs).node(),
-                        Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::LESS_OR_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -504,9 +586,10 @@ template<typename LHS, typename RHS>
 requires SameScalars<LHS, RHS>
 Scalar<bool> operator==(LHS&& lhs, RHS&& rhs)
 {
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          std::forward<RHS>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    std::forward<RHS>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -514,9 +597,10 @@ requires ScalarAndConstant<LHS, RHS>
 Scalar<bool> operator==(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType,
+                                                    Operator::EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -524,9 +608,10 @@ requires ConstantAndScalar<LHS, RHS>
 Scalar<bool> operator==(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::EQUAL),
-                        std::forward<LHS>(lhs).node(),
-                        Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType,
+                                                    Operator::EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -537,9 +622,10 @@ template<typename LHS, typename RHS>
 requires SameScalars<LHS, RHS>
 Scalar<bool> operator!=(LHS&& lhs, RHS&& rhs)
 {
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::NOT_EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          std::forward<RHS>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::NOT_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    std::forward<RHS>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -547,9 +633,10 @@ requires ScalarAndConstant<LHS, RHS>
 Scalar<bool> operator!=(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::NOT_EQUAL),
-                          std::forward<LHS>(lhs).node(),
-                          Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::NOT_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 template<typename LHS, typename RHS>
@@ -557,9 +644,10 @@ requires ConstantAndScalar<LHS, RHS>
 Scalar<bool> operator!=(LHS&& lhs, RHS&& rhs)
 {
     using T = std::remove_cvref_t<RHS>;
-    return { Node::create(OperatorExpression(Scalar<bool>::ValueType, Operator::NOT_EQUAL),
-                        std::forward<LHS>(lhs).node(),
-                        Scalar<T>(rhs).node()) };
+    return { Expression::create<OperatorExpression>(Scalar<bool>::ValueType, 
+                                                    Operator::NOT_EQUAL,
+                                                    std::forward<LHS>(lhs).expression(),
+                                                    Scalar<T>(rhs).expression()) };
 }
 
 using Vec2F = Vector<float, 2>;

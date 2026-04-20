@@ -93,11 +93,13 @@ target_sources(${TARGET_NAME}
     FILES     ${HEADERS})
 
 set(SOURCES
+    ${SOURCE_DIR}/Attribute.cpp
     ${SOURCE_DIR}/CompilerGLSL.cpp
     ${SOURCE_DIR}/CompilerSPV.cpp
     ${SOURCE_DIR}/Expressions.cpp
     ${SOURCE_DIR}/Node.cpp
     ${SOURCE_DIR}/ShaderGraph.cpp
+    ${SOURCE_DIR}/UniformBuffer.cpp
     ${SOURCE_DIR}/Value.cpp)
 
 target_sources(${TARGET_NAME}

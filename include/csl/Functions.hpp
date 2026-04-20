@@ -26,8 +26,9 @@ auto normalize(Vec&& v)
 {
     using ReturnType = std::remove_cvref_t<Vec>;
 
-    return ReturnType{ Node::create(NativeFunctionExpression(TypeTraits<ReturnType>::ValueType, NativeFunction::NORMALIZE),
-                                    std::forward<Vec>(v).node()) };
+    return ReturnType{ Expression::create<NativeFunctionExpression>(TypeTraits<ReturnType>::ValueType, 
+                                                                    NativeFunction::NORMALIZE,
+                                                                    std::forward<Vec>(v).expression()) };
 }
 
 
@@ -40,9 +41,10 @@ auto normalize(Vec&& v)
 template<FloatingPointVector Vec1, FloatingPointVector Vec2>
 Scalar<float> dot(Vec1&& v1, Vec2&& v2)
 {
-    return { Node::create(NativeFunctionExpression(ValueType::FLOAT, NativeFunction::DOT),
-                          std::forward<Vec1>(v1).node(),
-                          std::forward<Vec2>(v2).node()) };
+    return { Expression::create<NativeFunctionExpression>(ValueType::FLOAT, 
+                                                          NativeFunction::DOT,
+                                                          std::forward<Vec1>(v1).expression(),
+                                                          std::forward<Vec2>(v2).expression()) };
 }
 
 
@@ -55,9 +57,10 @@ Scalar<float> dot(Vec1&& v1, Vec2&& v2)
 template<VectorType<float, 3> Vec1, VectorType<float, 3> Vec2>
 Vector<float, 3> cross(Vec1&& v1, Vec2&& v2)
 {
-    return { Node::create(NativeFunctionExpression(Vector<float, 3>::ValueType, NativeFunction::CROSS),
-                          std::forward<Vec1>(v1).node(), 
-                          std::forward<Vec2>(v2).node()) };
+    return { Expression::create<NativeFunctionExpression>(Vector<float, 3>::ValueType, 
+                                                          NativeFunction::CROSS,
+                                                          std::forward<Vec1>(v1).expression(), 
+                                                          std::forward<Vec2>(v2).expression()) };
 }
 
 
@@ -69,8 +72,9 @@ Vector<float, 3> cross(Vec1&& v1, Vec2&& v2)
 template<FloatingPointVector Vec>
 Scalar<float> length(Vec&& v)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::LENGTH),
-                          std::forward<Vec>(v).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::LENGTH,
+                                                          std::forward<Vec>(v).expression()) };
 }
 
 
@@ -83,9 +87,10 @@ Scalar<float> length(Vec&& v)
 template<FloatingPointVector Vec1, FloatingPointVector Vec2>
 Scalar<float> distance(Vec1&& p1, Vec2&& p2)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::DISTANCE),
-                          std::forward<Vec1>(p1).node(),
-                          std::forward<Vec2>(p2).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::DISTANCE,
+                                                          std::forward<Vec1>(p1).expression(),
+                                                          std::forward<Vec2>(p2).expression()) };
 }
 
 
@@ -97,8 +102,9 @@ Scalar<float> distance(Vec1&& p1, Vec2&& p2)
 template<FloatingPointScalar T>
 Scalar<float> sqrt(T&& v)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::SQRT),
-                          std::forward<T>(v).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::SQRT,
+                                                          std::forward<T>(v).expression()) };
 }
 
 
@@ -110,8 +116,9 @@ Scalar<float> sqrt(T&& v)
 template<FloatingPointScalar T>
 Scalar<float> inverseSqrt(T&& v)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::INVERSESQRT),
-                          std::forward<T>(v).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::INVERSESQRT,
+                                                          std::forward<T>(v).expression()) };
 }
 
 
@@ -125,9 +132,10 @@ template<AnyScalar T1, AnyScalar T2>
 auto pow(T1&& base, T2&& exp)
 {
     using ReturnType = std::remove_cvref_t<T1>;
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::SQRT),
-                          std::forward<T1>(base).node(),
-                          std::forward<T2>(exp).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::SQRT,
+                                                          std::forward<T1>(base).expression(),
+                                                          std::forward<T2>(exp).expression()) };
 }
 
 
@@ -138,8 +146,9 @@ auto pow(T1&& base, T2&& exp)
 template<FloatingPointScalar T>
 Scalar<float> sin(T&& angle)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::SIN),
-                          std::forward<T>(angle).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::SIN,
+                                                          std::forward<T>(angle).expression()) };
 }
 
 
@@ -150,8 +159,9 @@ Scalar<float> sin(T&& angle)
 template<FloatingPointScalar T>
 Scalar<float> cos(T&& angle)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::COS),
-                          std::forward<T>(angle).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType,
+                                                          NativeFunction::COS,
+                                                          std::forward<T>(angle).expression()) };
 }
 
 
@@ -162,8 +172,9 @@ Scalar<float> cos(T&& angle)
 template<FloatingPointScalar T>
 Scalar<float> tan(T&& angle)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::TAN),
-                          std::forward<T>(angle).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::TAN,
+                                                          std::forward<T>(angle).expression()) };
 }
 
 
@@ -174,8 +185,9 @@ Scalar<float> tan(T&& angle)
 template<FloatingPointScalar T>
 Scalar<float> asin(T&& angle)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::ASIN),
-                          std::forward<T>(angle).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::ASIN,
+                                                          std::forward<T>(angle).expression()) };
 }
 
 
@@ -186,8 +198,9 @@ Scalar<float> asin(T&& angle)
 template<FloatingPointScalar T>
 Scalar<float> acos(T&& angle)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::ACOS),
-                          std::forward<T>(angle).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::ACOS,
+                                                          std::forward<T>(angle).expression()) };
 }
 
 
@@ -199,9 +212,10 @@ Scalar<float> acos(T&& angle)
 template<FloatingPointScalar T1, FloatingPointScalar T2>
 Scalar<float> atan(T1&& y, T2&& x)
 {
-    return { Node::create(NativeFunctionExpression(Scalar<float>::ValueType, NativeFunction::ATAN),
-                          std::forward<T1>(y).node(),
-                          std::forward<T2>(x).node()) };
+    return { Expression::create<NativeFunctionExpression>(Scalar<float>::ValueType, 
+                                                          NativeFunction::ATAN,
+                                                          std::forward<T1>(y).expression(),
+                                                          std::forward<T2>(x).expression()) };
 }
 
 
@@ -210,7 +224,7 @@ Scalar<float> atan(T1&& y, T2&& x)
  */
 inline void discard()
 {
-    //Node::create(NativeFunctionExpression(ValueType::VOID, NativeFunction::DISCARD));
+    auto node = Expression::create<NativeFunctionExpression>(ValueType::VOID, NativeFunction::DISCARD);
 }
 
 } // namespace csl 

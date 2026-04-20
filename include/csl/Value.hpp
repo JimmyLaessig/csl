@@ -13,7 +13,7 @@
 
 #include <csl/ValueType.hpp>
 
-#include <csl/Node.hpp>
+#include <csl/Expressions.hpp>
 
 #include <memory>
 
@@ -34,19 +34,19 @@ struct CSL_API Value
 {
 public:
 
-	Value(std::shared_ptr<Node> source);
+	Value(ExpressionPtr source);
 
-	// Get the wrapped ShaderGraph node
-	std::shared_ptr<Node> node() const &;
+	// Get the wrapped ShaderGraph expression
+	ExpressionPtr expression() const &;
 
-	// Get the wrapped ShaderGraph node
-	std::shared_ptr<Node> node() &&;
+	// Get the wrapped ShaderGraph expression
+	ExpressionPtr expression() &&;
 
-	void setNode(std::shared_ptr<Node> source);
+	void setExpression(ExpressionPtr source);
 
 private:
 
-	std::shared_ptr<Node> mNode;
+	ExpressionPtr mExpression;
 };
 
 } // namespace csl 

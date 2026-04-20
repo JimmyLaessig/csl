@@ -22,11 +22,6 @@
 namespace csl
 {
 
-class Node;
-class InputAttributeExpression;
-class OutputAttributeExpression;
-class UniformExpression;
-
 // \brief Concept to detect struct-like types
 template <typename T>
 concept StructType = std::is_class_v<T> && !std::is_union_v<T>;
@@ -86,16 +81,23 @@ public:
 		using Traits = FunctionTraits<decltype(&T::main)>;
 		using Arg    = std::remove_cvref_t<typename Traits::ArgType>;
 		using Ret    = typename Traits::ReturnType;
-		beginRecording();
+		ShaderGraph::beginScope(*this);
 
-		csl::Attributes inputAttributeBuilder(true);
-		csl::Attributes outputAttributeBuilder(false);
+		Attributes inputs(true);
 
+		// Initialize the input attributes
+		Attributes::beginScope(inputs);
 		Arg arg;
-		DefineType(arg, inputAttributeBuilder);
+		Attributes::endScope();
+
+		// All attributes registered during the execution of main() are output attributes
+		Attributes outputs(false);
+		Attributes::beginScope(outputs);
+
 		Ret result = shader.main(arg);
-		DefineType(result, outputAttributeBuilder);
-		endRecording();
+	
+		Attributes::endScope();
+		ShaderGraph::endScope();
 	}
 
 	/** \brief Get all input attribute expressions in the shader graph
@@ -121,15 +123,15 @@ public:
 	/** \brief Add the node to the shader graph
 	 * This function is used by the Node's create() function to add itself to the shader graph
 	 */
-	void addNode(std::shared_ptr<Node> node);
+	void addNode(std::shared_ptr<Expression> node);
 
 	/** \brief Begin recording of shader graph expressions
 	 */
-	void beginRecording();
+	static void beginScope(ShaderGraph& shaderGraph);
 
 	/** \brief End recording of shader graph expressions
      */
-	void endRecording();
+	static void endScope();
 
 	/** \brief Get the current recording shader graph
 	 * This function is used by the Node's create() function to add itself to the shader graph
@@ -138,7 +140,7 @@ public:
 
 private:
 
-	std::vector<std::shared_ptr<Node>> mNodes;
+	std::vector<std::shared_ptr<Expression>> mExpressions;
 
 }; // class ShaderGraph
 
